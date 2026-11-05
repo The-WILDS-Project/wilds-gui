@@ -17,7 +17,7 @@ document.addEventListener("alpine:init", () => {
     const HEARTBEAT_MS = 10000;
     const base = document.body.dataset.controlUrl;
 
-    const store = Alpine.store("session", {
+    Alpine.store("session", {
         ready: false,
         error: null,
         name: null,
@@ -53,6 +53,9 @@ document.addEventListener("alpine:init", () => {
             }
         },
     });
+
+    // Alpine.store(name, value) returns nothing when setting; get the reactive store afterwards.
+    const store = Alpine.store("session");
 
     const read = (key) => { try { return localStorage.getItem(key); } catch { return null; } };
     const write = (key, value) => {
@@ -118,6 +121,7 @@ document.addEventListener("alpine:init", () => {
             await beat();
         } catch (e) {
             store.error = String(e.message || e);
+            console.error("wilds session:", e);
         }
     }
 
