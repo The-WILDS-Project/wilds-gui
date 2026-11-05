@@ -27,6 +27,31 @@ document.addEventListener("alpine:init", () => {
         engineering: false,
         requested: false,
         token: null,
+
+        // Actions that depend only on this session (greyed out with a reason, plan §3.12).
+        get local() {
+            let request = { ok: true, why: "" };
+            if (!this.ready) request = { ok: false, why: "Not connected to wilds-control" };
+            else if (this.holder) request = { ok: false, why: "You already hold control" };
+            return { request_control: request };
+        },
+
+        /** Ask for control; the TO grants it after you give them your name and short code. */
+        async requestControl() {
+            const id = read(KEY_ID);
+            try {
+                const response = await fetch(`${base}/control/requests`, {
+                    method: "POST",
+                    headers: { "X-Session-Id": id || "" },
+                });
+                if (!response.ok) throw new Error(await problem(response));
+                this.requested = true;
+                showToast("info", "Control requested",
+                    `Tell the Telescope Operator your name and code: ${this.name} ${this.code}`);
+            } catch (e) {
+                showToast("error", "Could not request control", String(e.message || e));
+            }
+        },
     });
 
     const read = (key) => { try { return localStorage.getItem(key); } catch { return null; } };

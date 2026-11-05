@@ -21,7 +21,11 @@ document.addEventListener("alpine:init", () => {
         actions: {},                 // {"slew": {"ok": false, "why": "…"}, …} (plan §3.12)
 
         action(name) {
-            return this.actions[name] || { ok: false, why: "Status from wilds-control not available" };
+            // wilds-control's per-action rules win; until it sends them, the few actions that
+            // depend only on this browser's own session are worked out here (session.js).
+            return this.actions[name]
+                || Alpine.store("session")?.local[name]
+                || { ok: false, why: "Status from wilds-control not available" };
         },
         get previewText() {
             if (this.tcs.preview === true) return "Preview on: targets need TO approval";

@@ -93,3 +93,10 @@ def test_to_page_lists_sessions_with_provenance_tooltips(client: Client) -> None
 
 def test_to_js_is_served(client: Client) -> None:
     assert finders.find("wilds/js/to.js")
+
+
+def test_request_control_is_wired_to_the_session_store(client: Client) -> None:
+    html = client.get("/io/").content.decode()
+    assert '@click="$store.session.requestControl()"' in html
+    assert 'x-tooltip="$store.session.provenance"' in html
+    assert "Session code: <strong>—</strong>" not in html
