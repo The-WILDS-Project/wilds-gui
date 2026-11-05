@@ -6,7 +6,7 @@
       "type": "debugpy",
       "request": "launch",
       "program": "${workspaceFolder}/manage.py",
-      "args": ["runserver", "8000", "--noreload"],
+      "args": ["runserver", "8000"],
       "python": "${workspaceFolder}/../.venv/bin/python",
       "cwd": "${workspaceFolder}",
       "env": { "WILDS_CONTROL_URL": "http://localhost:8001" },
