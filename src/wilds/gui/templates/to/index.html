@@ -1,6 +1,8 @@
 {% extends "base.html" %}
+{% load static %}
 {% block title %}WILDS · Telescope Operator{% endblock %}
 {% block role %}Telescope Operator{% endblock %}
+{% block extra_js %}<script src="{% static 'wilds/js/to.js' %}" defer></script>{% endblock %}
 {% block content %}
 {# Single page, no sidebar (plan §3.11). Placeholders until wilds-control serves sessions. #}
 <div class="row g-3">
@@ -8,9 +10,44 @@
         <div class="card">
             <div class="card-header"><i class="bi bi-person-check me-2"></i>Control</div>
             <div class="card-body">
-                <p class="mb-2">Holder: <span x-data x-text="$store.wilds.control.holder ?? 'nobody'"></span></p>
-                <h6 class="mt-3">Requests</h6>
-                <p class="text-body-secondary small mb-3">Name, short code and time of each request appear here.</p>
+                <div x-data="toSessions()" x-init="start()">
+                    <form x-show="!unlocked" @submit.prevent="unlock()" class="d-flex gap-2 mb-2">
+                        <input type="password" class="form-control form-control-sm" x-model="entry"
+                               placeholder="Telescope Operator passphrase" autocomplete="off">
+                        <button class="btn btn-sm btn-primary" type="submit">Unlock</button>
+                    </form>
+                    <p class="text-danger small" x-show="error" x-text="error"></p>
+                    <template x-if="unlocked">
+                        <div>
+                            <p class="mb-2">Holder:
+                                <template x-if="holder">
+                                    <span>
+                                        <strong x-text="holder.name"></strong>
+                                        <code x-text="holder.code" x-tooltip="holder.provenance" style="cursor: help;"></code>
+                                        <span class="badge ui-warning" x-show="engineering">engineering</span>
+                                    </span>
+                                </template>
+                                <em x-show="!holder">nobody</em>
+                            </p>
+                            <h6 class="mt-3">Requests</h6>
+                            <p class="text-body-secondary small" x-show="requests.length === 0">No requests.</p>
+                            <ul class="list-unstyled mb-3">
+                                <template x-for="r in requests" :key="r.code">
+                                    <li><span x-text="r.name"></span>
+                                        <code x-text="r.code" x-tooltip="r.provenance" style="cursor: help;"></code></li>
+                                </template>
+                            </ul>
+                            <h6>Viewers</h6>
+                            <p class="text-body-secondary small" x-show="viewers.length === 0">No other sessions.</p>
+                            <ul class="list-unstyled mb-3">
+                                <template x-for="v in viewers" :key="v.code">
+                                    <li><span x-text="v.name"></span>
+                                        <code x-text="v.code" x-tooltip="v.provenance" style="cursor: help;"></code></li>
+                                </template>
+                            </ul>
+                        </div>
+                    </template>
+                </div>
                 {% include "components/action_button.html" with action="revoke" label="Revoke control" style="outline-danger" %}
             </div>
         </div>

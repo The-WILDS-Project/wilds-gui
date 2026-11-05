@@ -22,6 +22,7 @@
             <div class="flex-grow-1 d-flex align-items-center justify-content-center gap-4">
                 {% include "components/control_holder.html" %}
                 {% include "components/tcs_access_badge.html" %}
+                {% include "components/session_badge.html" %}
             </div>
 
             {% include "components/link_status.html" %}
@@ -49,6 +50,7 @@
     <script src="{% static 'vendor/htmx-2.0.4/htmx.min.js' %}" defer></script>
     <script src="{% static 'wilds/js/ui.js' %}" defer></script>
     <script src="{% static 'wilds/js/status.js' %}" defer></script>
+    <script src="{% static 'wilds/js/session.js' %}" defer></script>
     {% block extra_js %}{% endblock %}
     {# Alpine last: the scripts above register their alpine:init handlers first. #}
     <script src="{% static 'vendor/alpinejs-3.14.8/alpine.min.js' %}" defer></script>

@@ -4,8 +4,12 @@
     <span x-show="!$store.wilds.control.holder">WILDS control: <em>nobody</em></span>
     <span x-show="$store.wilds.control.holder && !$store.wilds.control.engineering">
         WILDS control: <strong x-text="$store.wilds.control.holder"></strong>
+        <code x-show="$store.wilds.control.holder_code" x-text="$store.wilds.control.holder_code"
+              x-tooltip="$store.wilds.control.holder_info" style="cursor: help;"></code>
     </span>
     <span x-show="$store.wilds.control.engineering" class="badge ui-warning">
         engineering mode: <span x-text="$store.wilds.control.holder"></span>
+        <code x-show="$store.wilds.control.holder_code" x-text="$store.wilds.control.holder_code"
+              x-tooltip="$store.wilds.control.holder_info" style="cursor: help;"></code>
     </span>
 </div>
