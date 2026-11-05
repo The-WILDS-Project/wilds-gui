@@ -93,3 +93,10 @@ def test_to_page_lists_sessions_with_provenance_tooltips(client: Client) -> None
 
 def test_to_js_is_served(client: Client) -> None:
     assert finders.find("wilds/js/to.js")
+
+
+def test_to_page_has_grant_refuse_and_revoke(client: Client) -> None:
+    html = client.get("/to/").content.decode()
+    for call in ('@click="grant(r)"', '@click="refuse(r)"', '@click="revoke()"'):
+        assert call in html
+    assert 'action="revoke"' not in html
