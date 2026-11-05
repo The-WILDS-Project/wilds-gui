@@ -1,0 +1,6 @@
+{% comment %}
+Status dot (MAST notifications.css). Static use:
+  {% include "components/status_dot.html" with state="ok" label="Archon VIS" %}
+state: ok | warning | error | unknown. For live dots, bind :class="'status-' + state" instead.
+{% endcomment %}
+<span class="status-dot status-{{ state|default:'unknown' }}" aria-hidden="true"></span>{% if label %}<span>{{ label }}</span>{% endif %}

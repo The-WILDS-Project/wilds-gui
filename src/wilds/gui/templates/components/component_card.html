@@ -1,0 +1,16 @@
+{% comment %}
+Component card (MAST components/component_card.html).
+  name, active (bool), status_text, severity (info|success|warning|danger|primary|secondary),
+  activities (list), url (optional)
+{% endcomment %}
+<a href="{{ url|default:'#' }}" class="text-decoration-none text-reset">
+    <div class="card ui-card severity-{{ severity|default:'secondary' }}{% if not active %} inactive{% endif %}">
+        <div class="card-body text-center p-2">
+            <h6 class="mb-1">
+                {% include "components/activity_indicator.html" with activities=activities %}
+                {{ name }}
+            </h6>
+            <span class="badge ui-{{ severity|default:'secondary' }}">{{ status_text|default:"Unknown" }}</span>
+        </div>
+    </div>
+</a>

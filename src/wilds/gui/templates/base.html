@@ -1,0 +1,56 @@
+{% load static %}<!DOCTYPE html>
+{# Layout adapted from the MAST GUI (templates/base.html): 80 px header, sidebar, main area. #}
+<html lang="en" data-bs-theme="dark">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{% block title %}WILDS{% endblock %}</title>
+    <script src="{% static 'wilds/js/theme.js' %}"></script>
+    <link rel="stylesheet" href="{% static 'vendor/bootstrap-5.3.3/bootstrap.min.css' %}">
+    <link rel="stylesheet" href="{% static 'vendor/bootstrap-icons-1.11.3/bootstrap-icons.min.css' %}">
+    <link rel="stylesheet" href="{% static 'wilds/css/tokens.css' %}">
+    <link rel="stylesheet" href="{% static 'wilds/css/notifications.css' %}">
+    <link rel="stylesheet" href="{% static 'wilds/css/main.css' %}">
+    {% block extra_css %}{% endblock %}
+</head>
+<body data-control-url="{{ wilds_control_url }}">
+    <header class="ui-header">
+        <div class="container-fluid h-100 d-flex align-items-center gap-3 px-4">
+            <img src="{% static 'wilds/img/weizmann-logo.png' %}" alt="Weizmann Institute" height="56" class="ui-logo">
+            <div class="ui-title">WILDS <span class="fs-6 fw-normal text-body-secondary">{% block role %}{% endblock %}</span></div>
+
+            <div class="flex-grow-1 d-flex align-items-center justify-content-center gap-4">
+                {% include "components/control_holder.html" %}
+                {% include "components/tcs_access_badge.html" %}
+            </div>
+
+            {% include "components/link_status.html" %}
+            <button type="button" class="btn btn-sm btn-outline-secondary" onclick="uiToggleTheme()" title="Light / dark">
+                <i class="bi bi-circle-half"></i>
+            </button>
+        </div>
+    </header>
+
+    <div id="banner-container"></div>
+
+    <div class="d-flex ui-main">
+        {% block sidebar %}{% endblock %}
+        <main class="flex-grow-1" style="min-width: 0; overflow-x: auto;">
+            <div class="container-fluid mt-3">
+                {% block content %}{% endblock %}
+            </div>
+        </main>
+    </div>
+
+    <div id="toast-container" class="position-fixed bottom-0 start-0 p-3"></div>
+
+    {% csrf_token %}
+    <script src="{% static 'vendor/bootstrap-5.3.3/bootstrap.bundle.min.js' %}" defer></script>
+    <script src="{% static 'vendor/htmx-2.0.4/htmx.min.js' %}" defer></script>
+    <script src="{% static 'wilds/js/ui.js' %}" defer></script>
+    <script src="{% static 'wilds/js/status.js' %}" defer></script>
+    {% block extra_js %}{% endblock %}
+    {# Alpine last: the scripts above register their alpine:init handlers first. #}
+    <script src="{% static 'vendor/alpinejs-3.14.8/alpine.min.js' %}" defer></script>
+</body>
+</html>

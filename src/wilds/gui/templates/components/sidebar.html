@@ -1,0 +1,17 @@
+{# Collapsible sidebar (MAST components/sidebar.html); collapsed state remembered per browser. #}
+<nav class="sidebar" id="sidebar">
+    <div class="sidebar-header">
+        <button class="sidebar-toggle" type="button" onclick="uiToggleSidebar()" title="Collapse sidebar">
+            <i class="bi bi-chevron-left" id="sidebar-toggle-icon"></i>
+        </button>
+    </div>
+    <div class="sidebar-menu">
+        {% for slug, label, icon in io_pages %}
+            {% if slug == "engineering" %}<div class="sidebar-separator"></div>{% endif %}
+            <a href="{% url 'io_page' slug %}" class="sidebar-item{% if slug == page %} active{% endif %}" title="{{ label }}">
+                <i class="bi {{ icon }}"></i>
+                <span class="sidebar-item-text">{{ label }}</span>
+            </a>
+        {% endfor %}
+    </div>
+</nav>

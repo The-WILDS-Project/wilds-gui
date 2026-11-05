@@ -1,0 +1,34 @@
+{% extends "base.html" %}
+{% block title %}WILDS · {{ page_label }}{% endblock %}
+{% block role %}Instrument Operator · {{ page_label }}{% endblock %}
+{% block sidebar %}{% include "components/sidebar.html" %}{% endblock %}
+{% block content %}
+<div class="d-flex align-items-center justify-content-between mb-3">
+    <h4 class="mb-0">{{ page_label }}</h4>
+    <div class="d-flex align-items-center gap-2">
+        <span class="text-body-secondary small">Session code: <strong>—</strong></span>
+        {% include "components/action_button.html" with action="request_control" label="Request control" style="outline-primary" %}
+    </div>
+</div>
+
+{% if page == "operations" %}
+<div class="card mb-3">
+    <div class="card-header"><i class="bi bi-crosshair me-2"></i>Target</div>
+    <div class="card-body">
+        <div class="row mb-2 align-items-center">
+            <label class="col-4 fw-bold text-end" for="target-name">Name</label>
+            <div class="col-8"><input id="target-name" class="form-control" placeholder="e.g. HD 12345"></div>
+        </div>
+        <div class="row mb-2 align-items-center">
+            <div class="col-4"></div>
+            <div class="col-8 d-flex align-items-center gap-2" x-data>
+                {% include "components/action_button.html" with action="slew" label="Send to TO preview" %}
+                <span class="small text-body-secondary" x-text="$store.wilds.previewText"></span>
+            </div>
+        </div>
+    </div>
+</div>
+{% endif %}
+
+<p class="text-body-secondary">The {{ page_label|lower }} panels come here.</p>
+{% endblock %}

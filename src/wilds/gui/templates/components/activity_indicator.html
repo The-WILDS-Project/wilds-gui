@@ -1,0 +1,8 @@
+{% comment %}
+Activity heart (MAST components/activity_indicator.html): beats while something runs; the
+tooltip lists what. activities: a list of strings.
+{% endcomment %}
+<span class="activity-dot{% if activities %} active{% endif %}"
+      data-bs-toggle="tooltip" data-bs-placement="bottom"
+      title="{{ activities|join:', ' }}"
+      {% if not activities %}hidden{% endif %}></span>
