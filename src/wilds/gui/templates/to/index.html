@@ -25,6 +25,8 @@
                                         <strong x-text="holder.name"></strong>
                                         <code x-text="holder.code" x-tooltip="holder.provenance" style="cursor: help;"></code>
                                         <span class="badge ui-warning" x-show="engineering">engineering</span>
+                                        <button type="button" class="btn btn-sm btn-outline-danger ms-2"
+                                                @click="revoke()">Revoke control</button>
                                     </span>
                                 </template>
                                 <em x-show="!holder">nobody</em>
@@ -33,8 +35,12 @@
                             <p class="text-body-secondary small" x-show="requests.length === 0">No requests.</p>
                             <ul class="list-unstyled mb-3">
                                 <template x-for="r in requests" :key="r.code">
-                                    <li><span x-text="r.name"></span>
-                                        <code x-text="r.code" x-tooltip="r.provenance" style="cursor: help;"></code></li>
+                                    <li class="d-flex align-items-center gap-2 mb-1">
+                                        <span x-text="r.name"></span>
+                                        <code x-text="r.code" x-tooltip="r.provenance" style="cursor: help;"></code>
+                                        <button type="button" class="btn btn-sm btn-primary ms-2" @click="grant(r)">Grant</button>
+                                        <button type="button" class="btn btn-sm btn-outline-secondary" @click="refuse(r)">Refuse</button>
+                                    </li>
                                 </template>
                             </ul>
                             <h6>Viewers</h6>
@@ -48,7 +54,6 @@
                         </div>
                     </template>
                 </div>
-                {% include "components/action_button.html" with action="revoke" label="Revoke control" style="outline-danger" %}
             </div>
         </div>
     </div>

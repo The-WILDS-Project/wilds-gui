@@ -100,3 +100,10 @@ def test_request_control_is_wired_to_the_session_store(client: Client) -> None:
     assert '@click="$store.session.requestControl()"' in html
     assert 'x-tooltip="$store.session.provenance"' in html
     assert "Session code: <strong>—</strong>" not in html
+
+
+def test_to_page_has_grant_refuse_and_revoke(client: Client) -> None:
+    html = client.get("/to/").content.decode()
+    for call in ('@click="grant(r)"', '@click="refuse(r)"', '@click="revoke()"'):
+        assert call in html
+    assert 'action="revoke"' not in html
