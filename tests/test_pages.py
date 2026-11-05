@@ -8,6 +8,7 @@ STATIC_IN_BASE = [
     "wilds/js/theme.js",
     "wilds/js/ui.js",
     "wilds/js/status.js",
+    "wilds/js/session.js",
     "wilds/css/tokens.css",
     "wilds/css/main.css",
     "wilds/css/notifications.css",
@@ -68,3 +69,27 @@ def test_ui_js_never_inserts_html() -> None:
     for name in ("ui.js", "status.js", "theme.js"):
         text = Path(finders.find(f"wilds/js/{name}")).read_text()
         assert "innerHTML" not in text and "insertAdjacentHTML" not in text, name
+
+
+def test_header_shows_the_session_code_with_a_tooltip(client: Client) -> None:
+    html = client.get("/io/").content.decode()
+    assert "$store.session.code" in html
+    assert 'x-tooltip="$store.session.provenance"' in html
+    assert "wilds/js/session.js" in html
+
+
+def test_holder_code_has_the_holder_origin_tooltip(client: Client) -> None:
+    html = client.get("/io/").content.decode()
+    assert 'x-tooltip="$store.wilds.control.holder_info"' in html
+
+
+def test_to_page_lists_sessions_with_provenance_tooltips(client: Client) -> None:
+    html = client.get("/to/").content.decode()
+    assert "wilds/js/to.js" in html
+    assert 'x-data="toSessions()"' in html
+    for who in ("holder", "r", "v"):
+        assert f'x-tooltip="{who}.provenance"' in html
+
+
+def test_to_js_is_served(client: Client) -> None:
+    assert finders.find("wilds/js/to.js")

@@ -1,5 +1,5 @@
 /*
- * WILDS UI helpers: toasts, banner, confirm dialog, tooltips, sidebar.
+ * WILDS UI helpers: toasts, banner, confirm and prompt dialogs, tooltips, sidebar.
  *
  * Adapted from the MAST GUI (static/js/notifications.js, confirm-modal.js, colors.js and the
  * scripts in templates/base.html and components/sidebar.html). Differences:
@@ -137,6 +137,58 @@ function uiConfirm(message, { title = "Confirm", ok = "OK", cancel = "Cancel" } 
         okBtn.addEventListener("click", () => { result = true; modal.hide(); });
         cancelBtn.addEventListener("click", () => modal.hide());
         modalEl.addEventListener("shown.bs.modal", () => okBtn.focus());
+        modalEl.addEventListener("hidden.bs.modal", () => { modalEl.remove(); resolve(result); });
+        modal.show();
+    });
+}
+
+/**
+ * A text-input dialog in the app's style. Resolves the trimmed text, or null on Cancel/Escape.
+ *   const name = await uiPrompt("Your name and place", {title: "Who are you?", value: "Arie"});
+ */
+function uiPrompt(message, { title = "Input", ok = "OK", cancel = "Cancel", value = "", placeholder = "" } = {}) {
+    return new Promise((resolve) => {
+        document.getElementById("ui-prompt-modal")?.remove();
+
+        const modalEl = uiElement("div", "modal fade");
+        modalEl.id = "ui-prompt-modal";
+        modalEl.tabIndex = -1;
+        const dialog = uiElement("div", "modal-dialog modal-dialog-centered");
+        const content = uiElement("div", "modal-content");
+
+        const header = uiElement("div", "modal-header");
+        const h = uiElement("h5", "modal-title");
+        h.append(uiElement("i", "bi bi-person me-2"), document.createTextNode(title));
+        header.append(h);
+
+        const body = uiElement("div", "modal-body");
+        const label = uiElement("label", "form-label", message);
+        const input = uiElement("input", "form-control");
+        input.type = "text";
+        input.value = value;
+        input.placeholder = placeholder;
+        input.maxLength = 60;
+        body.append(label, input);
+
+        const footer = uiElement("div", "modal-footer justify-content-between");
+        const cancelBtn = uiElement("button", "btn btn-secondary btn-sm", cancel);
+        const okBtn = uiElement("button", "btn btn-primary btn-sm", ok);
+        cancelBtn.type = okBtn.type = "button";
+        cancelBtn.style.minWidth = okBtn.style.minWidth = "80px";
+        footer.append(cancelBtn, okBtn);
+
+        content.append(header, body, footer);
+        dialog.append(content);
+        modalEl.append(dialog);
+        document.body.append(modalEl);
+
+        const modal = new bootstrap.Modal(modalEl, { backdrop: "static" });
+        let result = null;
+        const accept = () => { result = input.value.trim() || null; modal.hide(); };
+        okBtn.addEventListener("click", accept);
+        input.addEventListener("keydown", (e) => { if (e.key === "Enter") accept(); });
+        cancelBtn.addEventListener("click", () => modal.hide());
+        modalEl.addEventListener("shown.bs.modal", () => input.focus());
         modalEl.addEventListener("hidden.bs.modal", () => { modalEl.remove(); resolve(result); });
         modal.show();
     });
