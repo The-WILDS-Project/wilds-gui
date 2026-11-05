@@ -6,8 +6,12 @@
 <div class="d-flex align-items-center justify-content-between mb-3">
     <h4 class="mb-0">{{ page_label }}</h4>
     <div class="d-flex align-items-center gap-2">
-        <span class="text-body-secondary small">Session code: <strong>—</strong></span>
-        {% include "components/action_button.html" with action="request_control" label="Request control" style="outline-primary" %}
+        <span x-data class="text-body-secondary small" x-show="$store.session.code">
+            Session code:
+            <strong x-text="$store.session.code" x-tooltip="$store.session.provenance" style="cursor: help;"></strong>
+        </span>
+        <span x-data x-show="$store.session.requested && !$store.session.holder" class="badge ui-info">Control requested</span>
+        {% include "components/action_button.html" with action="request_control" label="Request control" style="outline-primary" click="$store.session.requestControl()" %}
     </div>
 </div>
 
