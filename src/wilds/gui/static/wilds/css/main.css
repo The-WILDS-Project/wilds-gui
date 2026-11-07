@@ -204,15 +204,21 @@ body {
     line-height: 1.15;
     cursor: help;
 }
+.ui-clocks {
+    width: 16.5ch;               /* label + "03:11:10 am", so nothing moves as the digits change */
+}
 .ui-clocks > div {
     display: flex;
+    justify-content: space-between;
     align-items: baseline;
     white-space: pre;
     font-variant-numeric: tabular-nums;
 }
 .ui-clocks .ui-clock-label {
-    flex: 0 0 2.6em;
-    font-weight: 700;
+    font-weight: 700;            /* left-justified */
     color: var(--bs-body-color);
+}
+.ui-clocks .ui-clock-label + span {
+    text-align: right;           /* the values line up on their right edge */
 }
 .ui-clocks.stale { opacity: 0.5; }

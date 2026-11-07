@@ -12,17 +12,19 @@ document.addEventListener("alpine:init", () => {
     Alpine.store("clock", {
         offsetMs: null,        // server UTC minus this browser's clock (smoothed)
         zone: "America/Phoenix",
-        ldt: "--:--:--",
-        ut: "--:--:--",
-        lt: "--:--:--",
+        ldt: "--:--:-- --",
+        ut: "--:--:-- --",
+        lt: "--:--:-- --",
         tip: "Waiting for the server's clock",
         live: false,
     });
     const store = Alpine.store("clock");
 
-    const hms = (zone) => new Intl.DateTimeFormat("en-GB", {
-        hour: "2-digit", minute: "2-digit", second: "2-digit", hourCycle: "h23", timeZone: zone,
+    // 12-hour with am/pm, always the same width ("03:11:10 am") so the values line up.
+    const fmt = (zone) => new Intl.DateTimeFormat("en-US", {
+        hour: "2-digit", minute: "2-digit", second: "2-digit", hour12: true, timeZone: zone,
     });
+    const hms = (zone) => ({ format: (t) => fmt(zone).format(t).toLowerCase() });
     const day = (zone) => new Intl.DateTimeFormat("en-CA", {
         weekday: "short", year: "numeric", month: "2-digit", day: "2-digit", timeZone: zone,
     });
