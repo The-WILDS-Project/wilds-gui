@@ -183,10 +183,10 @@ def test_alias_without_a_trailing_slash_gets_there_too(client: Client) -> None:
 @pytest.mark.parametrize(
     ("url", "heading"),
     [
-        ("/io/", "Instrument Operator"),
-        ("/io/products/", "Instrument Operator"),  # no area suffix
+        ("/io/", "Instrument<br>Operator"),
+        ("/io/products/", "Instrument<br>Operator"),  # no area suffix
         ("/eng/configuration/", "Engineering"),
-        ("/to/", "Telescope Operator"),
+        ("/to/", "Telescope<br>Operator"),
         ("/eng/", "Engineering"),
     ],
 )
