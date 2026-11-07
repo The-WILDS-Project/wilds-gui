@@ -22,6 +22,7 @@ body {
     font-size: 1.5rem;
     font-weight: bold;
     letter-spacing: 0.05em;
+    line-height: 1.15;           /* the Operator pages' titles take two lines */
     white-space: nowrap;
 }
 
