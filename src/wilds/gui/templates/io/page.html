@@ -17,7 +17,10 @@
             <strong x-text="$store.session.code" x-tooltip="$store.session.provenance" style="cursor: help;"></strong>
         </span>
         <span x-data x-show="$store.session.requested && !$store.session.holder" class="badge ui-info">Control requested</span>
-        {% include "components/action_button.html" with action="request_control" label="Request control" style="outline-primary" click="$store.session.requestControl()" %}
+        {# Hidden once control is granted: there is nothing left to request. #}
+        <span x-data x-show="$store.session.controlStatus !== 'granted'">
+            {% include "components/action_button.html" with action="request_control" label="Request control" style="outline-primary" click="$store.session.requestControl()" %}
+        </span>
     </div>
 </div>
 

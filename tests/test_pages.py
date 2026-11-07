@@ -368,3 +368,11 @@ def test_the_test_job_card_is_on_the_io_operations_page_in_development(client: C
     assert "$store.wilds.opmode === 'development'" in html
     assert "startDemo('done', queue)" in html and "startDemo('fail', queue)" in html
     assert "startDemo" not in client.get("/io/products/").content.decode()
+
+
+def test_request_control_is_hidden_once_control_is_granted(client: Client) -> None:
+    html = client.get("/io/").content.decode()
+    wrapper = "x-show=\"$store.session.controlStatus !== 'granted'\""
+    assert wrapper in html
+    # the button sits inside that wrapper, not beside it
+    assert html.index(wrapper) < html.index('@click="$store.session.requestControl()"')
