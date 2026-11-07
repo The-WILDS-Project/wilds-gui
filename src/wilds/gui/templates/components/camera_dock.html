@@ -1,0 +1,110 @@
+{% load static %}
+{% comment %}
+The guide-camera dock (plan §3.8): the live view to the right of the page, on the Instrument
+Operator and Engineering pages. Three sizes: dock (the working size, with the controls),
+thumb (a small picture to keep an eye on while working in a panel) and off (a rail with a
+button; the video socket is closed). The choice is remembered per browser; a narrow window shows
+the dock as a thumbnail. Logic and the video socket: static/wilds/js/camera.js.
+{% endcomment %}
+<script src="{% static 'wilds/js/camera.js' %}?v={{ asset_version }}" defer></script>
+<aside class="camera-dock" x-data :class="'dock-' + $store.camera.shown" aria-label="Guide camera">
+
+    <div class="dock-rail" x-show="$store.camera.shown === 'off'">
+        <button type="button" class="btn btn-sm btn-outline-secondary" @click="$store.camera.setSize('dock')"
+                x-tooltip="'Show the guide camera'" aria-label="Show the guide camera">
+            <i class="bi bi-camera-video"></i>
+        </button>
+        <span class="status-dot" :class="'status-' + $store.camera.dot" aria-hidden="true"></span>
+    </div>
+
+    <div class="dock-panel" x-show="$store.camera.shown !== 'off'">
+        <div class="dock-head">
+            <span class="status-dot" :class="'status-' + $store.camera.dot" aria-hidden="true"></span>
+            <strong>Guide camera</strong>
+            <span class="dock-state text-body-secondary small" x-text="$store.camera.headline"></span>
+            <span class="ms-auto d-flex gap-1">
+                <button type="button" class="btn btn-sm btn-outline-secondary" :class="{ active: $store.camera.size === 'thumb' }"
+                        @click="$store.camera.setSize('thumb')" x-tooltip="'Small picture'" aria-label="Small picture">
+                    <i class="bi bi-dash-square"></i>
+                </button>
+                <button type="button" class="btn btn-sm btn-outline-secondary" :class="{ active: $store.camera.size === 'dock' }"
+                        @click="$store.camera.setSize('dock')" x-tooltip="'Full dock'" aria-label="Full dock">
+                    <i class="bi bi-window"></i>
+                </button>
+                <button type="button" class="btn btn-sm btn-outline-secondary"
+                        @click="$store.camera.setSize('off')" x-tooltip="'Hide (closes the video connection)'" aria-label="Hide">
+                    <i class="bi bi-x-lg"></i>
+                </button>
+            </span>
+        </div>
+
+        <div class="dock-frame" :style="`aspect-ratio: ${$store.camera.aspect}`">
+            <img x-show="$store.camera.url" :src="$store.camera.url" alt="Guide camera frame">
+            <div class="dock-empty text-body-secondary small" x-show="!$store.camera.url">
+                <span x-text="$store.camera.link === 'live' ? 'No frame yet: start the camera' : $store.camera.headline"></span>
+            </div>
+        </div>
+
+        <div class="dock-lines small">
+            <div class="text-body-secondary" x-text="$store.camera.frameText || ' '"></div>
+            <div>
+                <span x-text="$store.camera.tempText"></span>
+                <span class="text-body-secondary" x-text="$store.camera.coolerText ? '· ' + $store.camera.coolerText : ''"></span>
+            </div>
+        </div>
+
+        <div class="dock-controls" x-show="$store.camera.shown === 'dock'"
+             x-data="{ exposure: '', gain: '', setpoint: '', editing: '',
+                       sync() {
+                           const s = $store.wilds.guide_camera;
+                           if (!s) return;
+                           if (this.editing !== 'exposure') this.exposure = s.settings.exposure_s;
+                           if (this.editing !== 'gain') this.gain = s.settings.gain;
+                           if (this.editing !== 'setpoint') this.setpoint = s.cooler.setpoint_c ?? -10;
+                       } }"
+             x-effect="sync()">
+            <div x-tooltip="$store.jobs.canControl ? '' : $store.jobs.whyNot" class="d-flex flex-column gap-2">
+                <div class="d-flex gap-2">
+                    <button type="button" class="btn btn-sm btn-primary" x-show="!$store.camera.streaming"
+                            :disabled="!$store.jobs.canControl || $store.camera.busy || !$store.wilds.guide_camera"
+                            @click="$store.camera.start()"><i class="bi bi-play-fill me-1"></i>Start</button>
+                    <button type="button" class="btn btn-sm btn-outline-primary" x-show="$store.camera.streaming"
+                            :disabled="!$store.jobs.canControl || $store.camera.busy"
+                            @click="$store.camera.stop()"><i class="bi bi-stop-fill me-1"></i>Stop</button>
+                </div>
+                <div class="row g-2 align-items-center">
+                    <label class="col-4 col-form-label-sm" for="cam-exposure">Exposure (s)</label>
+                    <div class="col-8">
+                        <input id="cam-exposure" type="number" min="0.001" max="60" step="any" class="form-control form-control-sm"
+                               x-model="exposure" :disabled="!$store.jobs.canControl"
+                               @focus="editing = 'exposure'" @blur="editing = ''"
+                               @change="$store.camera.setting('exposure', { exposure_s: Number(exposure) })">
+                    </div>
+                    <label class="col-4 col-form-label-sm" for="cam-gain">Gain</label>
+                    <div class="col-8">
+                        <input id="cam-gain" type="number" min="0" max="500" step="1" class="form-control form-control-sm"
+                               x-model="gain" :disabled="!$store.jobs.canControl"
+                               @focus="editing = 'gain'" @blur="editing = ''"
+                               @change="$store.camera.setting('gain', { gain: Math.round(Number(gain)) })">
+                    </div>
+                    <template x-if="$store.wilds.guide_camera?.cooler?.supported">
+                        <div class="col-12 row g-2 align-items-center m-0 p-0">
+                            <label class="col-4 col-form-label-sm" for="cam-setpoint">Cooler (°C)</label>
+                            <div class="col-5">
+                                <input id="cam-setpoint" type="number" min="-40" max="30" step="1" class="form-control form-control-sm"
+                                       x-model="setpoint" :disabled="!$store.jobs.canControl"
+                                       @focus="editing = 'setpoint'" @blur="editing = ''"
+                                       @change="$store.camera.cooler({ setpoint_c: Number(setpoint) })">
+                            </div>
+                            <div class="col-3 form-check form-switch m-0 ps-5">
+                                <input class="form-check-input" type="checkbox" role="switch" aria-label="Cooler on"
+                                       :checked="$store.wilds.guide_camera.cooler.enabled" :disabled="!$store.jobs.canControl"
+                                       @change="$store.camera.cooler({ enabled: $event.target.checked })">
+                            </div>
+                        </div>
+                    </template>
+                </div>
+            </div>
+        </div>
+    </div>
+</aside>

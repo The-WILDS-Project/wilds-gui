@@ -2,6 +2,7 @@
 {% block title %}WILDS - Engineering{% endblock %}
 {% block heading %}Engineering{% endblock %}
 {% block sidebar %}{% include "components/sidebar.html" with pages=eng_pages url_name="eng_page" %}{% endblock %}
+{% block dock %}{% include "components/camera_dock.html" %}{% endblock %}
 {% block content %}
 {% comment %} Engineering mode (plan §3.11): the passphrase is checked by wilds-control, which gives this
    session the lease in engineering mode. No TO involvement; coordination is by Zoom or in person.

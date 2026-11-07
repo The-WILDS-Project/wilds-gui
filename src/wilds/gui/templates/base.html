@@ -14,6 +14,7 @@
     <link rel="stylesheet" href="{% static 'wilds/css/notifications.css' %}?v={{ asset_version }}">
     <link rel="stylesheet" href="{% static 'wilds/css/main.css' %}?v={{ asset_version }}">
     <link rel="stylesheet" href="{% static 'wilds/css/activity.css' %}?v={{ asset_version }}">
+    <link rel="stylesheet" href="{% static 'wilds/css/camera.css' %}?v={{ asset_version }}">
     {% block extra_css %}{% endblock %}
 </head>
 <body data-control-url="{{ wilds_control_url }}">
@@ -47,6 +48,7 @@
                 {% block content %}{% endblock %}
             </div>
         </main>
+        {% block dock %}{% endblock %}
     </div>
 
     <div id="toast-container" class="position-fixed bottom-0 start-0 p-3"></div>

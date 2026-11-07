@@ -11,10 +11,12 @@ STATIC_IN_BASE = [
     "wilds/js/clock.js",
     "wilds/js/session.js",
     "wilds/js/jobs.js",
+    "wilds/js/camera.js",
     "wilds/css/tokens.css",
     "wilds/css/main.css",
     "wilds/css/notifications.css",
     "wilds/css/activity.css",
+    "wilds/css/camera.css",
     "wilds/img/weizmann-logo.png",
     "vendor/bootstrap-5.3.3/bootstrap.min.css",
     "vendor/bootstrap-5.3.3/bootstrap.bundle.min.js",
@@ -69,7 +71,7 @@ def test_vendored_libraries_keep_their_licences() -> None:
 
 def test_ui_js_never_inserts_html() -> None:
     """Session names come from anonymous visitors, so no innerHTML / insertAdjacentHTML."""
-    for name in ("ui.js", "status.js", "theme.js", "jobs.js"):
+    for name in ("ui.js", "status.js", "theme.js", "jobs.js", "camera.js"):
         text = Path(finders.find(f"wilds/js/{name}")).read_text()
         assert "innerHTML" not in text and "insertAdjacentHTML" not in text, name
 
@@ -376,3 +378,14 @@ def test_request_control_is_hidden_once_control_is_granted(client: Client) -> No
     assert wrapper in html
     # the button sits inside that wrapper, not beside it
     assert html.index(wrapper) < html.index('@click="$store.session.requestControl()"')
+
+
+@pytest.mark.parametrize("url", ["/io/", "/io/products/", "/eng/", "/eng/calibration/"])
+def test_operator_and_engineering_pages_have_the_camera_dock(client: Client, url: str) -> None:
+    html = client.get(url).content.decode()
+    assert 'class="camera-dock"' in html and "wilds/js/camera.js" in html
+    assert html.index('id="sidebar"') < html.index('class="camera-dock"')  # sidebar, main, dock
+
+
+def test_the_to_page_has_no_camera_dock(client: Client) -> None:
+    assert "camera-dock" not in client.get("/to/").content.decode()
