@@ -33,7 +33,38 @@ document.addEventListener("alpine:init", () => {
             let request = { ok: true, why: "" };
             if (!this.ready) request = { ok: false, why: "Not connected to wilds-control" };
             else if (this.holder) request = { ok: false, why: "You already hold control" };
-            return { request_control: request };
+            const notYet = { ok: false, why: "Not implemented in wilds-control yet" };
+            return {
+                request_control: request,
+                cal_lamps: notYet, cal_slit: notYet, cal_adc: notYet, cal_focus: notYet,
+                cal_bias: notYet, cal_dark: notYet, cal_flat: notYet,
+            };
+        },
+
+        /** Take control in engineering mode (plan §3.11): the passphrase is checked by wilds-control. */
+        async enterEngineering(passphrase) {
+            const response = await fetch(`${base}/control/engineering`, {
+                method: "POST",
+                headers: { "X-Session-Id": read(KEY_ID) || "", "Content-Type": "application/json" },
+                body: JSON.stringify({ passphrase }),
+            });
+            if (response.status === 403) throw new Error("Wrong engineering passphrase");
+            if (!response.ok) throw new Error(await problem(response));
+            this.holder = true;
+            this.engineering = true;
+            await tick();  // pick up the lease token
+        },
+
+        /** Give control up (the holder releases). */
+        async release() {
+            const response = await fetch(`${base}/control`, {
+                method: "DELETE",
+                headers: { "X-Session-Id": read(KEY_ID) || "" },
+            });
+            if (!response.ok) throw new Error(await problem(response));
+            this.holder = false;
+            this.engineering = false;
+            this.token = null;
         },
 
         /** Ask for control; the TO grants it after you give them your name and short code. */
@@ -46,8 +77,10 @@ document.addEventListener("alpine:init", () => {
                 });
                 if (!response.ok) throw new Error(await problem(response));
                 this.requested = true;
+                const to = Alpine.store("wilds").to.online === false
+                    ? " The Telescope Operator is offline; the request waits for them." : "";
                 showToast("info", "Control requested",
-                    `Tell the Telescope Operator your name and code: ${this.name} ${this.code}`);
+                    `Tell the Telescope Operator your name and code: ${this.name} ${this.code}.${to}`);
             } catch (e) {
                 showToast("error", "Could not request control", String(e.message || e));
             }

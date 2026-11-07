@@ -1,7 +1,8 @@
 {% extends "base.html" %}
 {% load static %}
-{% block title %}WILDS · Telescope Operator{% endblock %}
+{% block title %}WILDS - Telescope Operator{% endblock %}
 {% block role %}Telescope Operator{% endblock %}
+{% block to_status %}{% endblock %}
 {% block extra_js %}<script src="{% static 'wilds/js/to.js' %}" defer></script>{% endblock %}
 {% block content %}
 {# Single page, no sidebar (plan §3.11). Placeholders until wilds-control serves sessions. #}

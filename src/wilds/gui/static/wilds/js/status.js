@@ -9,7 +9,9 @@ document.addEventListener("alpine:init", () => {
     Alpine.store("wilds", {
         link: "connecting",          // connecting | ok | offline
         lastUpdate: null,
-        control: { holder: null, engineering: false },
+        control: { holder: null, engineering: false, holder_code: null, holder_info: null },
+        to: { online: null },        // Telescope Operator page open and unlocked (null = unknown)
+        warnings: [],                // e.g. the engineering passphrase is still the default
         tcs: {
             state: null,             // TCSTcsStatusSV
             health: null,

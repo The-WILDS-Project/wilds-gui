@@ -23,6 +23,7 @@
 
             <div class="flex-grow-1 d-flex align-items-center justify-content-center gap-4">
                 {% include "components/control_holder.html" %}
+                {% block to_status %}{% include "components/to_status.html" %}{% endblock %}
                 {% include "components/tcs_access_badge.html" %}
                 {% include "components/session_badge.html" %}
             </div>

@@ -7,13 +7,17 @@ IO_PAGES = [
     ("calibration", "Calibration", "bi-lightbulb"),
     ("products", "Products", "bi-images"),
     ("configuration", "Configuration", "bi-sliders"),
-    ("engineering", "Engineering", "bi-wrench-adjustable"),
 ]
 
 
 def to_page(request: HttpRequest) -> HttpResponse:
     """The Telescope Operator's page: status, requests, grant/revoke (plan §3.11)."""
     return render(request, "to/index.html")
+
+
+def eng_page(request: HttpRequest) -> HttpResponse:
+    """The engineering page: monitoring and calibration, behind the engineering passphrase."""
+    return render(request, "eng/index.html")
 
 
 def io_page(request: HttpRequest, page: str) -> HttpResponse:

@@ -33,9 +33,7 @@ def test_root_redirects_to_io(client: Client) -> None:
     assert response["Location"] == "/io/"
 
 
-@pytest.mark.parametrize(
-    "url", ["/to/", "/io/", "/io/calibration/", "/io/products/", "/io/engineering/"]
-)
+@pytest.mark.parametrize("url", ["/to/", "/io/", "/io/calibration/", "/io/products/", "/eng/"])
 def test_pages_render(client: Client, url: str) -> None:
     response = client.get(url)
     assert response.status_code == 200
@@ -107,3 +105,70 @@ def test_to_page_has_grant_refuse_and_revoke(client: Client) -> None:
     for call in ('@click="grant(r)"', '@click="refuse(r)"', '@click="revoke()"'):
         assert call in html
     assert 'action="revoke"' not in html
+
+
+@pytest.mark.parametrize(
+    ("url", "title"),
+    [
+        ("/io/", "WILDS - Instrument Operator"),
+        ("/io/calibration/", "WILDS - Instrument Operator"),
+        ("/to/", "WILDS - Telescope Operator"),
+        ("/eng/", "WILDS - Engineering"),
+    ],
+)
+def test_page_titles(client: Client, url: str, title: str) -> None:
+    assert f"<title>{title}</title>" in client.get(url).content.decode()
+
+
+def test_io_engineering_moved_to_eng(client: Client) -> None:
+    response = client.get("/io/engineering/")
+    assert response.status_code == 302 and response["Location"] == "/eng/"
+    assert "/io/engineering/" not in client.get("/io/").content.decode()  # not in the sidebar
+
+
+def test_eng_page_asks_for_the_passphrase_and_has_the_calibration_access_points(
+    client: Client,
+) -> None:
+    html = client.get("/eng/").content.decode()
+    assert "$store.session.enterEngineering(this.passphrase)" in html
+    assert "$store.session.release()" in html
+    assert "$store.wilds.warnings" in html  # default-passphrase warning
+    for action in ("lamps", "slit", "adc", "focus", "bias", "dark", "flat"):
+        assert f"$store.wilds.action('cal_{action}')" in html
+
+
+def test_to_online_status_is_in_the_header_except_on_the_to_page(client: Client) -> None:
+    assert "$store.wilds.to.online" in client.get("/io/").content.decode()
+    assert "$store.wilds.to.online" in client.get("/eng/").content.decode()
+    assert "TO: " not in client.get("/to/").content.decode()  # the TO page is the TO
+
+
+def test_io_page_warns_when_the_to_is_offline(client: Client) -> None:
+    html = client.get("/io/").content.decode()
+    assert "The Telescope Operator is offline" in html
+    assert "$store.wilds.to.online === false" in html
+
+
+@pytest.mark.parametrize(
+    ("alias", "canonical"),
+    [
+        ("/telescope-operator/", "/to/"),
+        ("/telop/", "/to/"),
+        ("/instrument-operator/", "/io/"),
+        ("/instop/", "/io/"),
+        ("/instop/calibration/", "/io/calibration/"),
+        ("/instrument-operator/products/", "/io/products/"),
+        ("/engineering/", "/eng/"),
+    ],
+)
+def test_alias_paths_redirect_to_the_canonical_page(
+    client: Client, alias: str, canonical: str
+) -> None:
+    response = client.get(alias)
+    assert response.status_code == 302 and response["Location"] == canonical
+    assert client.get(canonical).status_code == 200
+
+
+def test_alias_without_a_trailing_slash_gets_there_too(client: Client) -> None:
+    response = client.get("/telop", follow=True)
+    assert response.redirect_chain[-1][0] == "/to/" and response.status_code == 200
