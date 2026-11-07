@@ -9,7 +9,7 @@ The WILDS web GUI, in Django:
 
 The browser talks to **wilds-control** (`WILDS_CONTROL_URL`, default
 `http://localhost:8001`) directly, for commands, status and video. Django serves pages and
-holds no hardware state. See `wilds-claude/plans/control-and-gui.md`.
+holds no hardware state. See `claude/plans/control-and-gui.md`.
 
 ## Run
 
