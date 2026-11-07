@@ -1,6 +1,6 @@
 {% extends "base.html" %}
 {% block title %}WILDS - Instrument Operator{% endblock %}
-{% block role %}Instrument Operator · {{ page_label }}{% endblock %}
+{% block heading %}WILDS - Instrument Operator{% endblock %}
 {% block sidebar %}{% include "components/sidebar.html" %}{% endblock %}
 {% block content %}
 <div x-data x-show="$store.wilds.to.online === false" class="alert alert-warning py-2" role="status">

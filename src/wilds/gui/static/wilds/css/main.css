@@ -189,3 +189,17 @@ body {
     text-align: left;
     max-width: 420px;
 }
+
+/* Header clocks: stacked, fixed width digits, dimmed while the server clock is not live. */
+.ui-clocks {
+    font-family: var(--bs-font-monospace);
+    font-size: 0.72rem;
+    line-height: 1.15;
+    cursor: help;
+}
+.ui-clocks .ui-clock-label {
+    display: inline-block;
+    min-width: 2.2em;
+    color: var(--bs-secondary-color);
+}
+.ui-clocks.stale { opacity: 0.5; }

@@ -1,7 +1,12 @@
 {% extends "base.html" %}
 {% load static %}
 {% block title %}WILDS - Telescope Operator{% endblock %}
-{% block role %}Telescope Operator{% endblock %}
+{% block heading %}WILDS - Telescope Operator{% endblock %}
+{# The TO page works with the passphrase, not a session: no name prompt, no badge, and the TO
+   does not appear in their own viewers list. Server and LDT/UT clocks only (no browser LT). #}
+{% block clocks %}{% include "components/clocks.html" with show_lt=False %}{% endblock %}
+{% block session_badge %}{% endblock %}
+{% block session_js %}{% endblock %}
 {% block to_status %}{% endblock %}
 {% block extra_js %}<script src="{% static 'wilds/js/to.js' %}" defer></script>{% endblock %}
 {% block content %}

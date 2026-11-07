@@ -8,6 +8,7 @@ STATIC_IN_BASE = [
     "wilds/js/theme.js",
     "wilds/js/ui.js",
     "wilds/js/status.js",
+    "wilds/js/clock.js",
     "wilds/js/session.js",
     "wilds/css/tokens.css",
     "wilds/css/main.css",
@@ -172,3 +173,39 @@ def test_alias_paths_redirect_to_the_canonical_page(
 def test_alias_without_a_trailing_slash_gets_there_too(client: Client) -> None:
     response = client.get("/telop", follow=True)
     assert response.redirect_chain[-1][0] == "/to/" and response.status_code == 200
+
+
+@pytest.mark.parametrize(
+    ("url", "heading"),
+    [
+        ("/io/", "WILDS - Instrument Operator"),
+        ("/io/calibration/", "WILDS - Instrument Operator"),  # no area suffix
+        ("/to/", "WILDS - Telescope Operator"),
+        ("/eng/", "WILDS - Engineering"),
+    ],
+)
+def test_header_text_has_no_lighter_suffix(client: Client, url: str, heading: str) -> None:
+    html = client.get(url).content.decode()
+    assert f'<div class="ui-title">{heading}</div>' in html
+
+
+@pytest.mark.parametrize(("url", "has_lt"), [("/io/", True), ("/eng/", True), ("/to/", False)])
+def test_header_clocks_follow_the_title(client: Client, url: str, has_lt: bool) -> None:
+    html = client.get(url).content.decode()
+    assert html.index('class="ui-title"') < html.index('class="ui-clocks"')
+    assert "$store.clock.ldt" in html and "$store.clock.ut" in html
+    assert ("$store.clock.lt" in html) is has_lt
+    assert "wilds/js/clock.js" in html
+
+
+def test_to_page_has_no_session(client: Client) -> None:
+    html = client.get("/to/").content.decode()
+    assert "wilds/js/session.js" not in html  # no name prompt, not in its own viewers list
+    assert "$store.session" not in html  # no badge
+    assert "$store.session" in client.get("/io/").content.decode()
+
+
+def test_the_link_is_called_the_server(client: Client) -> None:
+    html = client.get("/io/").content.decode()
+    assert "'server: ' +" in html and ">Server</h6>" in html
+    assert "wilds-control: " not in html

@@ -1,0 +1,8 @@
+{# Server time in LDT and UT, and (operator and engineering pages) this browser's own LT.
+   The server's clock comes in the status stream; clock.js keeps it ticking. #}
+<div x-data class="ui-clocks" :class="{ stale: !$store.clock.live }"
+     x-tooltip="$store.clock.tip">
+    <div><span class="ui-clock-label">LDT</span> <span x-text="$store.clock.ldt"></span></div>
+    <div><span class="ui-clock-label">UT</span> <span x-text="$store.clock.ut"></span></div>
+    {% if show_lt %}<div><span class="ui-clock-label">LT</span> <span x-text="$store.clock.lt"></span></div>{% endif %}
+</div>

@@ -31,9 +31,9 @@ document.addEventListener("alpine:init", () => {
         // Actions that depend only on this session (greyed out with a reason, plan §3.12).
         get local() {
             let request = { ok: true, why: "" };
-            if (!this.ready) request = { ok: false, why: "Not connected to wilds-control" };
+            if (!this.ready) request = { ok: false, why: "Not connected to the server" };
             else if (this.holder) request = { ok: false, why: "You already hold control" };
-            const notYet = { ok: false, why: "Not implemented in wilds-control yet" };
+            const notYet = { ok: false, why: "Not implemented on the server yet" };
             return {
                 request_control: request,
                 cal_lamps: notYet, cal_slit: notYet, cal_adc: notYet, cal_focus: notYet,

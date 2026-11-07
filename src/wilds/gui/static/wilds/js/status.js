@@ -10,6 +10,7 @@ document.addEventListener("alpine:init", () => {
         link: "connecting",          // connecting | ok | offline
         lastUpdate: null,
         control: { holder: null, engineering: false, holder_code: null, holder_info: null },
+        time: null,                  // the server's clock: {utc_ms, zone}
         to: { online: null },        // Telescope Operator page open and unlocked (null = unknown)
         warnings: [],                // e.g. the engineering passphrase is still the default
         tcs: {
@@ -27,7 +28,7 @@ document.addEventListener("alpine:init", () => {
             // depend only on this browser's own session are worked out here (session.js).
             return this.actions[name]
                 || Alpine.store("session")?.local[name]
-                || { ok: false, why: "Status from wilds-control not available" };
+                || { ok: false, why: "Status from the server not available" };
         },
         get previewText() {
             if (this.tcs.preview === true) return "Preview on: targets need TO approval";
@@ -37,6 +38,10 @@ document.addEventListener("alpine:init", () => {
     });
 
     const base = document.body.dataset.controlUrl;
+    function setLink(state) {
+        Alpine.store("wilds").link = state;
+        document.dispatchEvent(new CustomEvent("wilds:link", { detail: state }));  // clock.js
+    }
     let retry = 1000;
     function connect() {
         let source;
@@ -46,14 +51,15 @@ document.addEventListener("alpine:init", () => {
             Alpine.store("wilds").link = "offline";
             return;
         }
-        source.addEventListener("open", () => { Alpine.store("wilds").link = "ok"; retry = 1000; });
+        source.addEventListener("open", () => { setLink("ok"); retry = 1000; });
         source.addEventListener("status", (e) => {
             const s = Alpine.store("wilds");
             Object.assign(s, JSON.parse(e.data));
             s.lastUpdate = new Date();
+            document.dispatchEvent(new CustomEvent("wilds:status", { detail: s }));
         });
         source.addEventListener("error", () => {
-            Alpine.store("wilds").link = "offline";
+            setLink("offline");
             source.close();
             setTimeout(connect, retry);
             retry = Math.min(retry * 2, 30000);

@@ -1,6 +1,6 @@
 {% extends "base.html" %}
 {% block title %}WILDS - Engineering{% endblock %}
-{% block role %}Engineering{% endblock %}
+{% block heading %}WILDS - Engineering{% endblock %}
 {% block content %}
 {# Engineering mode (plan §3.11): the passphrase is checked by wilds-control, which gives this
    session the lease in engineering mode. No TO involvement; coordination is by Zoom or in person.
@@ -57,7 +57,7 @@
                             <div class="col-6 col-md-4">{% include "components/component_card.html" with name="Archon VIS" status_text="Unknown" %}</div>
                             <div class="col-6 col-md-4">{% include "components/component_card.html" with name="Archon UV" status_text="Unknown" %}</div>
                         </div>
-                        <p class="text-body-secondary small mt-3 mb-0">Live values arrive when wilds-control reports them.</p>
+                        <p class="text-body-secondary small mt-3 mb-0">Live values arrive when the server reports them.</p>
                     </div>
                 </div>
             </div>

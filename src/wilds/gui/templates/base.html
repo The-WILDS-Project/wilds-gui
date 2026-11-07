@@ -19,13 +19,14 @@
     <header class="ui-header">
         <div class="container-fluid h-100 d-flex align-items-center gap-3 px-4">
             <img src="{% static 'wilds/img/weizmann-logo.png' %}" alt="Weizmann Institute" height="56" class="ui-logo">
-            <div class="ui-title">WILDS <span class="fs-6 fw-normal text-body-secondary">{% block role %}{% endblock %}</span></div>
+            <div class="ui-title">{% block heading %}WILDS{% endblock %}</div>
+            {% block clocks %}{% include "components/clocks.html" with show_lt=True %}{% endblock %}
 
             <div class="flex-grow-1 d-flex align-items-center justify-content-center gap-4">
                 {% include "components/control_holder.html" %}
                 {% block to_status %}{% include "components/to_status.html" %}{% endblock %}
                 {% include "components/tcs_access_badge.html" %}
-                {% include "components/session_badge.html" %}
+                {% block session_badge %}{% include "components/session_badge.html" %}{% endblock %}
             </div>
 
             {% include "components/link_status.html" %}
@@ -53,7 +54,8 @@
     <script src="{% static 'vendor/htmx-2.0.4/htmx.min.js' %}" defer></script>
     <script src="{% static 'wilds/js/ui.js' %}" defer></script>
     <script src="{% static 'wilds/js/status.js' %}" defer></script>
-    <script src="{% static 'wilds/js/session.js' %}" defer></script>
+    {% block session_js %}<script src="{% static 'wilds/js/session.js' %}" defer></script>{% endblock %}
+    <script src="{% static 'wilds/js/clock.js' %}" defer></script>
     {% block extra_js %}{% endblock %}
     {# Alpine last: the scripts above register their alpine:init handlers first. #}
     <script src="{% static 'vendor/alpinejs-3.14.8/alpine.min.js' %}" defer></script>
