@@ -9,7 +9,7 @@
 {% block session_badge %}{% endblock %}
 {% block session_js %}{% endblock %}
 {% block to_status %}{% endblock %}
-{% block extra_js %}<script src="{% static 'wilds/js/to.js' %}" defer></script>{% endblock %}
+{% block extra_js %}<script src="{% static 'wilds/js/to.js' %}?v={{ asset_version }}" defer></script>{% endblock %}
 {% block content %}
 {# Single page, no sidebar (plan §3.11). Placeholders until wilds-control serves sessions. #}
 <div class="row g-3">

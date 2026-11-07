@@ -231,3 +231,32 @@ def test_session_badge_has_the_person_above_the_code(client: Client) -> None:
     code = html.index('x-text="$store.session.code" x-tooltip')
     assert name < code
     assert '<div x-text="$store.session.name"></div>' in html  # its own line
+
+
+def test_own_css_and_js_carry_a_version_so_a_change_busts_the_browser_cache(client: Client) -> None:
+    import re
+
+    html = client.get("/to/").content.decode()
+    urls = re.findall(r'(?:href|src)="(/static/wilds/(?:css|js)/[^"]+)"', html)
+    assert urls and all(re.search(r"\?v=\d+$", u) for u in urls), urls
+    assert "/static/wilds/js/to.js?v=" in html
+
+
+def test_the_version_changes_when_a_static_file_changes(tmp_path, monkeypatch) -> None:
+    import os
+
+    from wilds.gui import context_processors as cp
+
+    (tmp_path / "a.css").write_text("x")
+    monkeypatch.setattr(cp, "_STATIC", tmp_path)
+    monkeypatch.setattr(cp.settings, "DEBUG", True)
+    os.utime(tmp_path / "a.css", (1000, 1000))
+    assert cp._asset_version() == 1000
+    os.utime(tmp_path / "a.css", (2000, 2000))
+    assert cp._asset_version() == 2000
+
+
+def test_clock_labels_are_bold_by_markup_not_only_by_css(client: Client) -> None:
+    html = client.get("/io/").content.decode()
+    for label in ("LDT", "UT", "LT"):
+        assert f'<strong class="ui-clock-label">{label}</strong>' in html

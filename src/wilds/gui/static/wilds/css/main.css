@@ -219,6 +219,7 @@ body {
     color: var(--bs-body-color);
 }
 .ui-clocks .ui-clock-label + span {
+    min-width: 11ch;
     text-align: right;           /* the values line up on their right edge */
 }
 .ui-clocks.stale { opacity: 0.5; }

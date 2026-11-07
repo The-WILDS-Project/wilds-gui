@@ -7,12 +7,12 @@
     <title>{% block title %}WILDS{% endblock %}</title>
     <link rel="icon" href="{% static 'wilds/img/weizmann-logo.png' %}">
     <link rel="apple-touch-icon" href="{% static 'wilds/img/weizmann-logo.png' %}">
-    <script src="{% static 'wilds/js/theme.js' %}"></script>
+    <script src="{% static 'wilds/js/theme.js' %}?v={{ asset_version }}"></script>
     <link rel="stylesheet" href="{% static 'vendor/bootstrap-5.3.3/bootstrap.min.css' %}">
     <link rel="stylesheet" href="{% static 'vendor/bootstrap-icons-1.11.3/bootstrap-icons.min.css' %}">
-    <link rel="stylesheet" href="{% static 'wilds/css/tokens.css' %}">
-    <link rel="stylesheet" href="{% static 'wilds/css/notifications.css' %}">
-    <link rel="stylesheet" href="{% static 'wilds/css/main.css' %}">
+    <link rel="stylesheet" href="{% static 'wilds/css/tokens.css' %}?v={{ asset_version }}">
+    <link rel="stylesheet" href="{% static 'wilds/css/notifications.css' %}?v={{ asset_version }}">
+    <link rel="stylesheet" href="{% static 'wilds/css/main.css' %}?v={{ asset_version }}">
     {% block extra_css %}{% endblock %}
 </head>
 <body data-control-url="{{ wilds_control_url }}">
@@ -52,10 +52,10 @@
     {% csrf_token %}
     <script src="{% static 'vendor/bootstrap-5.3.3/bootstrap.bundle.min.js' %}" defer></script>
     <script src="{% static 'vendor/htmx-2.0.4/htmx.min.js' %}" defer></script>
-    <script src="{% static 'wilds/js/ui.js' %}" defer></script>
-    <script src="{% static 'wilds/js/status.js' %}" defer></script>
-    {% block session_js %}<script src="{% static 'wilds/js/session.js' %}" defer></script>{% endblock %}
-    <script src="{% static 'wilds/js/clock.js' %}" defer></script>
+    <script src="{% static 'wilds/js/ui.js' %}?v={{ asset_version }}" defer></script>
+    <script src="{% static 'wilds/js/status.js' %}?v={{ asset_version }}" defer></script>
+    {% block session_js %}<script src="{% static 'wilds/js/session.js' %}?v={{ asset_version }}" defer></script>{% endblock %}
+    <script src="{% static 'wilds/js/clock.js' %}?v={{ asset_version }}" defer></script>
     {% block extra_js %}{% endblock %}
     {# Alpine last: the scripts above register their alpine:init handlers first. #}
     <script src="{% static 'vendor/alpinejs-3.14.8/alpine.min.js' %}" defer></script>
