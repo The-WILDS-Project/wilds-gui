@@ -15,7 +15,7 @@ document.addEventListener("alpine:init", () => {
         control: { holder: null, engineering: false, holder_code: null, holder_info: null },
         time: null,                  // the server's clock: {utc_ms, zone}
         to: { online: null },        // Telescope Operator page open and unlocked (null = unknown)
-        warnings: [],                // e.g. the engineering passphrase is still the default
+        warnings: [],                // configuration problems worth showing, e.g. an ignored [passphrases] in config.toml
         tcs: {
             state: null,             // TCSTcsStatusSV
             health: null,

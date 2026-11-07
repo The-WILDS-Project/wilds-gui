@@ -139,7 +139,7 @@ def test_eng_page_asks_for_the_passphrase(client: Client) -> None:
     html = client.get("/eng/").content.decode()
     assert "$store.session.enterEngineering(this.passphrase)" in html
     assert "$store.session.release()" in html
-    assert "$store.wilds.warnings" in html  # default-passphrase warning
+    assert "$store.wilds.warnings" in html  # configuration warnings
 
 
 def test_to_online_status_is_in_the_header_except_on_the_to_page(client: Client) -> None:
