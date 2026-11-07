@@ -1,0 +1,140 @@
+/*
+ * The activity board (templates/components/activity_board.html): component rectangles in a
+ * row, running activities hanging below them as pills, a job touching several components as
+ * a bar across them. Ended pills and bars tint by outcome, then collapse.
+ */
+.board {
+    display: grid;
+    grid-template-columns: repeat(var(--cols), minmax(0, 1fr));
+    column-gap: 0.5rem;
+    align-items: start;
+}
+
+.board-comp {
+    display: flex;
+    align-items: center;
+    gap: 0.4rem;
+    padding: 0.35rem 0.6rem;
+    border: 1px solid var(--ui-border);
+    border-radius: 0.375rem;
+    font-size: 0.9rem;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    transition: border-color 0.3s;
+}
+
+.board-comp.busy {
+    border-color: var(--ui-primary-border);
+}
+
+.board-stack {
+    display: flex;
+    flex-direction: column;
+    align-items: flex-start;
+    min-width: 0;
+}
+
+/* Pills and bars share the enter / leave motion: grow in; tint at once, collapse after. */
+.act-pill,
+.board-bar {
+    --fill: 0%;
+    box-sizing: border-box;
+    max-height: 2.4rem;
+    overflow: hidden;
+    margin-top: 0.3rem;
+    padding: 0.2rem 0.6rem;
+    border: 1px solid var(--ui-info-border);
+    border-radius: 1rem;
+    background: linear-gradient(90deg, var(--ui-primary-bg) var(--fill), var(--ui-info-bg) var(--fill));
+    color: var(--ui-info-text);
+    font-size: 0.8rem;
+    animation: act-in 0.3s ease-out;
+    transition: background-color 0.2s, border-color 0.2s, max-height 0.35s ease 0.55s,
+                opacity 0.35s ease 0.55s, margin 0.35s ease 0.55s, padding 0.35s ease 0.55s;
+}
+
+.act-pill {
+    display: flex;
+    align-items: center;
+    gap: 0.3rem;
+    max-width: 100%;
+}
+
+.act-pill .act-text {
+    min-width: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.act-pill.cancelling {
+    background: var(--ui-warning-bg);
+    border-color: var(--ui-warning-border);
+    color: var(--ui-warning-text);
+}
+
+.board-bar {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    margin-top: 0.4rem;
+    border-radius: 0.375rem;
+    border-color: var(--ui-primary-border);
+    color: var(--ui-primary-text);
+}
+
+.board-bar.queued {
+    border-style: dashed;
+    background: transparent;
+}
+
+.board-bar .bar-text {
+    flex: 1 1 auto;
+    min-width: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.act-cancel {
+    padding: 0 0.25rem;
+    border: 0;
+    background: transparent;
+    color: inherit;
+    line-height: 1;
+}
+
+.act-cancel:disabled {
+    opacity: 0.4;
+}
+
+.act-pill.leaving,
+.board-bar.leaving {
+    max-height: 0;
+    opacity: 0;
+    margin-top: 0;
+    padding-top: 0;
+    padding-bottom: 0;
+    border-width: 0;
+}
+
+.act-pill.leaving, .board-bar.leaving { --fill: 100%; }
+.leaving.out-done      { background: var(--ui-success-bg); color: var(--ui-success-text); border-color: var(--ui-success-border); }
+.leaving.out-failed    { background: var(--ui-danger-bg);  color: var(--ui-danger-text);  border-color: var(--ui-danger-border); }
+.leaving.out-cancelled { background: var(--ui-secondary-bg); color: var(--ui-secondary-text); border-color: var(--ui-secondary-border); }
+
+@keyframes act-in {
+    from { max-height: 0; opacity: 0; margin-top: 0; padding-top: 0; padding-bottom: 0; }
+    to   { max-height: 2.4rem; opacity: 1; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .act-pill, .board-bar { animation: none; transition: none; }
+}
+
+/* The attention band: only when something needs a human (a failed job). */
+.attention .alert {
+    border-radius: 0;
+    margin-bottom: 0;
+}

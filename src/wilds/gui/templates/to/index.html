@@ -66,16 +66,9 @@
     </div>
     <div class="col-lg-6">
         <div class="card">
-            <div class="card-header"><i class="bi bi-activity me-2"></i>Instrument status</div>
+            <div class="card-header"><i class="bi bi-activity me-2"></i>Instrument activity</div>
             <div class="card-body">
-                <div class="row g-2">
-                    <div class="col-6 col-md-4">{% include "components/component_card.html" with name="Guide camera" status_text="Unknown" %}</div>
-                    <div class="col-6 col-md-4">{% include "components/component_card.html" with name="Slit" status_text="Unknown" %}</div>
-                    <div class="col-6 col-md-4">{% include "components/component_card.html" with name="ADC" status_text="Unknown" %}</div>
-                    <div class="col-6 col-md-4">{% include "components/component_card.html" with name="Lamps" status_text="Unknown" %}</div>
-                    <div class="col-6 col-md-4">{% include "components/component_card.html" with name="Archon VIS" status_text="Unknown" %}</div>
-                    <div class="col-6 col-md-4">{% include "components/component_card.html" with name="Archon UV" status_text="Unknown" %}</div>
-                </div>
+                {% include "components/activity_board.html" %}
             </div>
         </div>
     </div>

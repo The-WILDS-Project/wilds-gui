@@ -10,9 +10,11 @@ STATIC_IN_BASE = [
     "wilds/js/status.js",
     "wilds/js/clock.js",
     "wilds/js/session.js",
+    "wilds/js/jobs.js",
     "wilds/css/tokens.css",
     "wilds/css/main.css",
     "wilds/css/notifications.css",
+    "wilds/css/activity.css",
     "wilds/img/weizmann-logo.png",
     "vendor/bootstrap-5.3.3/bootstrap.min.css",
     "vendor/bootstrap-5.3.3/bootstrap.bundle.min.js",
@@ -67,7 +69,7 @@ def test_vendored_libraries_keep_their_licences() -> None:
 
 def test_ui_js_never_inserts_html() -> None:
     """Session names come from anonymous visitors, so no innerHTML / insertAdjacentHTML."""
-    for name in ("ui.js", "status.js", "theme.js"):
+    for name in ("ui.js", "status.js", "theme.js", "jobs.js"):
         text = Path(finders.find(f"wilds/js/{name}")).read_text()
         assert "innerHTML" not in text and "insertAdjacentHTML" not in text, name
 
@@ -137,7 +139,7 @@ def test_eng_page_asks_for_the_passphrase(client: Client) -> None:
     html = client.get("/eng/").content.decode()
     assert "$store.session.enterEngineering(this.passphrase)" in html
     assert "$store.session.release()" in html
-    assert "$store.wilds.warnings" in html  # default-passphrase warning
+    assert "$store.wilds.warnings" in html  # configuration warnings
 
 
 def test_to_online_status_is_in_the_header_except_on_the_to_page(client: Client) -> None:
@@ -332,3 +334,45 @@ def test_eng_pages_have_their_own_content(client: Client) -> None:
 
 def test_unknown_eng_page_is_404(client: Client) -> None:
     assert client.get("/eng/nothing/").status_code == 404
+
+
+@pytest.mark.parametrize("url", ["/to/", "/io/", "/io/products/", "/eng/", "/eng/monitoring/"])
+def test_pages_carry_the_attention_band_and_load_jobs_js(client: Client, url: str) -> None:
+    html = client.get(url).content.decode()
+    assert 'x-data="attentionBand()"' in html
+    assert "wilds/js/jobs.js" in html and "wilds/css/activity.css" in html
+
+
+@pytest.mark.parametrize("url", ["/to/", "/io/", "/io/products/", "/eng/monitoring/"])
+def test_the_activity_board_lists_the_components(client: Client, url: str) -> None:
+    html = client.get(url).content.decode()
+    assert 'x-data="activityBoard()"' in html
+    assert html.count('id="board-components"') == 1
+    for key in ("guide-camera", "slit", "adc", "lamps", "archon-vis", "archon-uv"):
+        assert key in html
+
+
+def test_the_old_component_cards_are_gone(client: Client) -> None:
+    for url in ("/to/", "/io/", "/eng/monitoring/"):
+        assert "ui-card" not in client.get(url).content.decode()
+
+
+def test_the_to_page_can_see_but_not_cancel(client: Client) -> None:
+    # No session store on /to, so the board's Cancel buttons are never drawn there.
+    assert "wilds/js/session.js" not in client.get("/to/").content.decode()
+    assert "$store.jobs.showCancel" in client.get("/to/").content.decode()
+
+
+def test_the_test_job_card_is_on_the_io_operations_page_in_development(client: Client) -> None:
+    html = client.get("/io/").content.decode()
+    assert "$store.wilds.opmode === 'development'" in html
+    assert "startDemo('done', queue)" in html and "startDemo('fail', queue)" in html
+    assert "startDemo" not in client.get("/io/products/").content.decode()
+
+
+def test_request_control_is_hidden_once_control_is_granted(client: Client) -> None:
+    html = client.get("/io/").content.decode()
+    wrapper = "x-show=\"$store.session.controlStatus !== 'granted'\""
+    assert wrapper in html
+    # the button sits inside that wrapper, not beside it
+    assert html.index(wrapper) < html.index('@click="$store.session.requestControl()"')

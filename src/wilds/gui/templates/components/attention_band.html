@@ -1,0 +1,18 @@
+{% comment %}
+Cards for what needs a human, and nothing else (plan §3.14): a failed job leaves one, because
+its pill is gone. Dismissed per browser tab. Nothing renders when all is well.
+{% endcomment %}
+<div x-data="attentionBand()" class="attention" role="alert">
+    <template x-for="job in items" :key="job.id + '@' + job.created_at">
+        <div class="alert alert-danger py-2 d-flex align-items-start gap-2">
+            <i class="bi bi-x-circle-fill"></i>
+            <div class="flex-grow-1">
+                <strong x-text="job.kind + ' ' + job.id + ' failed'"></strong>
+                <span x-text="'— ' + job.error.message"></span>
+                <div class="small" x-show="detailsText(job)" x-text="detailsText(job)"></div>
+                <div class="small text-body-secondary" x-text="'started by ' + job.started_by.name + ' ' + job.started_by.code"></div>
+            </div>
+            <button type="button" class="btn-close" aria-label="Dismiss" @click="dismiss(job)"></button>
+        </div>
+    </template>
+</div>
