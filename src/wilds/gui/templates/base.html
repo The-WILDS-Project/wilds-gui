@@ -13,6 +13,7 @@
     <link rel="stylesheet" href="{% static 'wilds/css/tokens.css' %}?v={{ asset_version }}">
     <link rel="stylesheet" href="{% static 'wilds/css/notifications.css' %}?v={{ asset_version }}">
     <link rel="stylesheet" href="{% static 'wilds/css/main.css' %}?v={{ asset_version }}">
+    <link rel="stylesheet" href="{% static 'wilds/css/activity.css' %}?v={{ asset_version }}">
     {% block extra_css %}{% endblock %}
 </head>
 <body data-control-url="{{ wilds_control_url }}">
@@ -37,6 +38,7 @@
     </header>
 
     <div id="banner-container"></div>
+    {% include "components/attention_band.html" %}
 
     <div class="d-flex ui-main">
         {% block sidebar %}{% endblock %}
@@ -56,6 +58,7 @@
     <script src="{% static 'wilds/js/status.js' %}?v={{ asset_version }}" defer></script>
     {% block session_js %}<script src="{% static 'wilds/js/session.js' %}?v={{ asset_version }}" defer></script>{% endblock %}
     <script src="{% static 'wilds/js/clock.js' %}?v={{ asset_version }}" defer></script>
+    <script src="{% static 'wilds/js/jobs.js' %}?v={{ asset_version }}" defer></script>
     {% block extra_js %}{% endblock %}
     {# Alpine last: the scripts above register their alpine:init handlers first. #}
     <script src="{% static 'vendor/alpinejs-3.14.8/alpine.min.js' %}" defer></script>

@@ -50,15 +50,7 @@
         <div class="card">
             <div class="card-header"><i class="bi bi-activity me-2"></i>Monitoring</div>
             <div class="card-body">
-                <div class="row g-2">
-                    <div class="col-6 col-md-4 col-xl-2">{% include "components/component_card.html" with name="Guide camera" status_text="Unknown" %}</div>
-                    <div class="col-6 col-md-4 col-xl-2">{% include "components/component_card.html" with name="Slit" status_text="Unknown" %}</div>
-                    <div class="col-6 col-md-4 col-xl-2">{% include "components/component_card.html" with name="ADC" status_text="Unknown" %}</div>
-                    <div class="col-6 col-md-4 col-xl-2">{% include "components/component_card.html" with name="Lamps" status_text="Unknown" %}</div>
-                    <div class="col-6 col-md-4 col-xl-2">{% include "components/component_card.html" with name="Archon VIS" status_text="Unknown" %}</div>
-                    <div class="col-6 col-md-4 col-xl-2">{% include "components/component_card.html" with name="Archon UV" status_text="Unknown" %}</div>
-                </div>
-                <p class="text-body-secondary small mt-3 mb-0">Live values arrive when the server reports them.</p>
+                {% include "components/activity_board.html" %}
             </div>
         </div>
         {% elif page == "calibration" %}

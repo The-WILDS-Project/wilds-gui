@@ -132,22 +132,6 @@ body {
     cursor: pointer;
 }
 
-/* Component cards (MAST .unit-card) */
-.ui-card {
-    border: 2px solid var(--ui-border);
-    transition: transform 0.3s, box-shadow 0.3s;
-    min-height: 100px;
-}
-
-.ui-card:hover {
-    transform: translateY(-3px);
-    box-shadow: 0 4px 8px rgba(0, 0, 0, 0.15);
-}
-
-.ui-card.inactive {
-    opacity: 0.7;
-}
-
 /* Form controls: slightly more visible borders (MAST) */
 .form-control,
 .form-select,

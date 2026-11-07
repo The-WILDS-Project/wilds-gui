@@ -1,0 +1,60 @@
+{% comment %}
+The activity board (plan §3.13, §3.14): the instrument's components in a row, what each is
+doing as pills below it, a job across several components as a bar. Driven by the "wilds" store
+(activities, jobs); the logic is static/wilds/js/jobs.js. Include once per page.
+{% endcomment %}
+{{ board_components|json_script:"board-components" }}
+<div x-data="activityBoard()" class="board" :style="`--cols: ${components.length}`" aria-live="polite">
+    <template x-for="(c, i) in components" :key="c.key">
+        <div class="board-comp" :class="{ busy: busy(c.key) }" :style="`grid-column: ${i + 1}; grid-row: 1`">
+            <span class="status-dot status-unknown" aria-hidden="true"></span>
+            <span x-text="c.label"></span>
+        </div>
+    </template>
+
+    <template x-for="b in bars" :key="b.id">
+        <div class="board-bar" :class="{ leaving: b.leaving, queued: b.state === 'queued', ['out-' + b.outcome]: b.leaving }"
+             :style="`grid-column: ${b.from} / ${b.to}; grid-row: ${b.row}; --fill: ${percent(b.fraction)}%`">
+            <span class="bar-text">
+                <strong x-text="b.kind"></strong>
+                <code x-text="b.id"></code>
+                <span x-text="b.who"></span>
+                <span x-show="b.state === 'queued'">· waiting for the components</span>
+                <span x-show="b.message" x-text="'· ' + b.message"></span>
+            </span>
+            <span class="small" x-show="b.fraction != null" x-text="percent(b.fraction) + ' %'"></span>
+            <span class="small" x-show="b.started_at" x-text="elapsed(b.started_at)"></span>
+            <template x-if="$store.jobs.showCancel && !b.leaving">
+                <span>
+                    <span class="small" x-show="b.cancelRequested">Cancelling…</span>
+                    <span x-show="!b.cancelRequested" x-tooltip="$store.jobs.canControl ? 'Cancel this job' : $store.jobs.whyNot">
+                        <button type="button" class="act-cancel" aria-label="Cancel job"
+                                :disabled="!$store.jobs.canControl" @click="$store.jobs.cancel(b.id)">
+                            <i class="bi bi-x-lg"></i>
+                        </button>
+                    </span>
+                </span>
+            </template>
+        </div>
+    </template>
+
+    <template x-for="(c, i) in components" :key="'stack-' + c.key">
+        <div class="board-stack" :style="`grid-column: ${i + 1}; grid-row: ${barRows + 2}`">
+            <template x-for="p in stack(c.key)" :key="p.id">
+                <div class="act-pill"
+                     :class="{ leaving: p.leaving, cancelling: p.name === 'Cancelling', ['out-' + p.outcome]: p.leaving }"
+                     :style="`--fill: ${p.single ? percent(p.fraction) : 0}%`" x-tooltip="pillTip(p)">
+                    <span class="act-text" x-text="pillText(p)"></span>
+                    <template x-if="p.single && $store.jobs.showCancel && !p.leaving && p.name !== 'Cancelling'">
+                        <span x-tooltip="$store.jobs.canControl ? 'Cancel this job' : $store.jobs.whyNot">
+                            <button type="button" class="act-cancel" aria-label="Cancel job"
+                                    :disabled="!$store.jobs.canControl || p.cancelRequested" @click="$store.jobs.cancel(p.jobId)">
+                                <i class="bi bi-x"></i>
+                            </button>
+                        </span>
+                    </template>
+                </div>
+            </template>
+        </div>
+    </template>
+</div>

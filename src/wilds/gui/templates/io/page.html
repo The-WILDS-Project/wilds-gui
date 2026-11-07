@@ -21,7 +21,34 @@
     </div>
 </div>
 
+<div class="card mb-3">
+    <div class="card-header"><i class="bi bi-activity me-2"></i>Activity</div>
+    <div class="card-body">{% include "components/activity_board.html" %}</div>
+</div>
+
 {% if page == "operations" %}
+<div class="card mb-3" x-data x-show="$store.wilds.opmode === 'development'">
+    <div class="card-header">
+        <i class="bi bi-bug me-2"></i>Test job
+        <span class="badge ui-warning ms-2">development</span>
+    </div>
+    <div class="card-body d-flex flex-wrap align-items-center gap-2" x-data="{ queue: false }">
+        <span x-tooltip="$store.jobs.canControl ? '' : 'Request control first: only the holder can start jobs'">
+            <button type="button" class="btn btn-outline-primary" :disabled="!$store.jobs.canControl"
+                    @click="$store.jobs.startDemo('done', queue)">Run "testing 1 2 3"</button>
+        </span>
+        <span x-tooltip="$store.jobs.canControl ? '' : 'Request control first: only the holder can start jobs'">
+            <button type="button" class="btn btn-outline-danger" :disabled="!$store.jobs.canControl"
+                    @click="$store.jobs.startDemo('fail', queue)">Run one that fails</button>
+        </span>
+        <div class="form-check ms-2">
+            <input class="form-check-input" type="checkbox" id="demo-queue" x-model="queue">
+            <label class="form-check-label small" for="demo-queue">wait if busy</label>
+        </div>
+        <span class="small text-body-secondary">About 12 s across the slit, ADC and guide camera.</span>
+    </div>
+</div>
+
 <div class="card mb-3">
     <div class="card-header"><i class="bi bi-crosshair me-2"></i>Target</div>
     <div class="card-body">

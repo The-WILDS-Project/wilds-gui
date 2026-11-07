@@ -26,8 +26,20 @@ def _asset_version() -> int:
     return version
 
 
-def wilds(request: HttpRequest) -> dict[str, str | int]:
+# The activity board's columns: wilds-control's component names, as they appear in /status.
+BOARD_COMPONENTS = [
+    {"key": "guide-camera", "label": "Guide camera"},
+    {"key": "slit", "label": "Slit"},
+    {"key": "adc", "label": "ADC"},
+    {"key": "lamps", "label": "Lamps"},
+    {"key": "archon-vis", "label": "Archon VIS"},
+    {"key": "archon-uv", "label": "Archon UV"},
+]
+
+
+def wilds(request: HttpRequest) -> dict[str, object]:
     return {
         "wilds_control_url": settings.WILDS_CONTROL_URL,
         "asset_version": _asset_version(),
+        "board_components": BOARD_COMPONENTS,
     }

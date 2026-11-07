@@ -120,7 +120,7 @@ document.addEventListener("alpine:init", () => {
 
     async function problem(response) {
         const body = await response.json().catch(() => ({}));
-        return body.detail || `HTTP ${response.status}`;
+        return body.message || body.detail || `HTTP ${response.status}`;
     }
 
     async function create() {
