@@ -12,7 +12,8 @@ body {
 
 /* Header (MAST: 80 px, logos left and right) */
 .ui-header {
-    height: 80px;
+    min-height: 80px;            /* grows when the middle group wraps on a narrow window */
+    padding-block: 0.25rem;
     background: var(--ui-header-bg);
     border-bottom: 1px solid var(--ui-border);
 }
@@ -21,7 +22,13 @@ body {
     font-size: 1.5rem;
     font-weight: bold;
     letter-spacing: 0.05em;
+    white-space: nowrap;
 }
+
+/* Topbar items stay on one line; the middle group gives way before they wrap. */
+.ui-header .container-fluid > * { flex-shrink: 0; }
+.ui-header .container-fluid > .flex-grow-1 { flex-shrink: 1; min-width: 0; flex-wrap: wrap; gap: 0.25rem 1.25rem !important; }
+.ui-header .container-fluid > .flex-grow-1 > * { white-space: nowrap; }
 
 .ui-main {
     min-height: calc(100vh - 80px);

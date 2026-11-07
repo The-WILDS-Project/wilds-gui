@@ -2,8 +2,9 @@
 {% load static %}
 {% block title %}WILDS - Telescope Operator{% endblock %}
 {% block heading %}WILDS - Telescope Operator{% endblock %}
-{# The TO page works with the passphrase, not a session: no name prompt, no badge, and the TO
-   does not appear in their own viewers list. Server and LDT/UT clocks only (no browser LT). #}
+{% comment %} The TO page works with the passphrase, not a session: no name prompt, no badge, and the TO
+   does not appear in their own viewers list. Server and LDT/UT clocks only (no browser LT).
+{% endcomment %}
 {% block clocks %}{% include "components/clocks.html" with show_lt=False %}{% endblock %}
 {% block session_badge %}{% endblock %}
 {% block session_js %}{% endblock %}

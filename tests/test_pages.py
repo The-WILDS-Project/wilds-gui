@@ -209,3 +209,11 @@ def test_the_link_is_called_the_server(client: Client) -> None:
     html = client.get("/io/").content.decode()
     assert "'server: ' +" in html and ">Server</h6>" in html
     assert "wilds-control: " not in html
+
+
+@pytest.mark.parametrize("url", ["/to/", "/io/", "/io/calibration/", "/eng/"])
+def test_no_template_comments_leak_into_the_page(client: Client, url: str) -> None:
+    """Django's {# #} comments are single-line only; a multi-line one renders as visible text."""
+    html = client.get(url).content.decode()
+    assert "{#" not in html and "#}" not in html
+    assert "{% comment" not in html and "{% endcomment" not in html
