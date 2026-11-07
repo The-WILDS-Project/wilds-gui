@@ -10,7 +10,7 @@
  */
 document.addEventListener("alpine:init", () => {
     Alpine.store("clock", {
-        offsetMs: null,        // server UTC minus this browser's clock
+        offsetMs: null,        // server UTC minus this browser's clock (smoothed)
         zone: "America/Phoenix",
         ldt: "--:--:--",
         ut: "--:--:--",
@@ -30,9 +30,11 @@ document.addEventListener("alpine:init", () => {
 
     function render() {
         const now = Date.now();
-        store.lt = hms(undefined).format(now);
-        if (store.offsetMs === null) return;
+        if (store.offsetMs === null) { store.lt = hms(undefined).format(now); return; }
+        // One instant for all three lines (LT is the same moment in this browser's own zone),
+        // so they always agree on the second.
         const server = new Date(now + store.offsetMs);
+        store.lt = hms(undefined).format(server);
         store.ldt = hms(store.zone).format(server);
         store.ut = hms("UTC").format(server);
         store.tip = [
@@ -43,11 +45,18 @@ document.addEventListener("alpine:init", () => {
         ].join("\n");
     }
 
-    // A status event: remember the offset and the zone.
+    // Each event gives offset = true offset - network delay, so the delay only ever lowers the
+    // estimate. The largest of the recent estimates is the best one and does not jitter, which
+    // keeps the seconds from flipping, repeating or skipping.
+    const recent = [];
     document.addEventListener("wilds:status", (e) => {
         const t = e.detail && e.detail.time;
         if (!t) return;
-        store.offsetMs = t.utc_ms - Date.now();
+        const sample = t.utc_ms - Date.now();
+        if (store.offsetMs !== null && Math.abs(sample - store.offsetMs) > 2000) recent.length = 0;  // clock stepped
+        recent.push(sample);
+        if (recent.length > 20) recent.shift();
+        store.offsetMs = Math.max(...recent);
         store.zone = t.zone;
         store.live = true;
         render();
@@ -55,9 +64,10 @@ document.addEventListener("alpine:init", () => {
     // The link going down only dims the clocks; they keep ticking from the last offset.
     document.addEventListener("wilds:link", (e) => { store.live = e.detail === "ok" && store.offsetMs !== null; render(); });
 
-    // Tick on the second boundary, so the seconds change when the clock does.
+    // Tick just after the *server's* second changes, so each tick shows a new second.
     (function tick() {
         render();
-        setTimeout(tick, 1000 - (Date.now() % 1000) + 5);
+        const server = Date.now() + (store.offsetMs ?? 0);
+        setTimeout(tick, 1000 - (server % 1000) + 20);
     })();
 });

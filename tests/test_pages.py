@@ -178,13 +178,13 @@ def test_alias_without_a_trailing_slash_gets_there_too(client: Client) -> None:
 @pytest.mark.parametrize(
     ("url", "heading"),
     [
-        ("/io/", "WILDS - Instrument Operator"),
-        ("/io/calibration/", "WILDS - Instrument Operator"),  # no area suffix
-        ("/to/", "WILDS - Telescope Operator"),
-        ("/eng/", "WILDS - Engineering"),
+        ("/io/", "Instrument Operator"),
+        ("/io/calibration/", "Instrument Operator"),  # no area suffix
+        ("/to/", "Telescope Operator"),
+        ("/eng/", "Engineering"),
     ],
 )
-def test_header_text_has_no_lighter_suffix(client: Client, url: str, heading: str) -> None:
+def test_header_text_is_just_the_role(client: Client, url: str, heading: str) -> None:
     html = client.get(url).content.decode()
     assert f'<div class="ui-title">{heading}</div>' in html
 
@@ -217,3 +217,17 @@ def test_no_template_comments_leak_into_the_page(client: Client, url: str) -> No
     html = client.get(url).content.decode()
     assert "{#" not in html and "#}" not in html
     assert "{% comment" not in html and "{% endcomment" not in html
+
+
+def test_header_says_control_not_wilds_control(client: Client) -> None:
+    html = client.get("/io/").content.decode()
+    assert "Control: <em>nobody</em>" in html
+    assert "WILDS control" not in html
+
+
+def test_session_badge_has_the_person_above_the_code(client: Client) -> None:
+    html = client.get("/io/").content.decode()
+    name = html.index('x-text="$store.session.name"')
+    code = html.index('x-text="$store.session.code" x-tooltip')
+    assert name < code
+    assert '<div x-text="$store.session.name"></div>' in html  # its own line

@@ -204,9 +204,15 @@ body {
     line-height: 1.15;
     cursor: help;
 }
+.ui-clocks > div {
+    display: flex;
+    align-items: baseline;
+    white-space: pre;
+    font-variant-numeric: tabular-nums;
+}
 .ui-clocks .ui-clock-label {
-    display: inline-block;
-    min-width: 2.2em;
-    color: var(--bs-secondary-color);
+    flex: 0 0 2.6em;
+    font-weight: 700;
+    color: var(--bs-body-color);
 }
 .ui-clocks.stale { opacity: 0.5; }
