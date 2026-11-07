@@ -34,7 +34,9 @@ def test_root_redirects_to_io(client: Client) -> None:
     assert response["Location"] == "/io/"
 
 
-@pytest.mark.parametrize("url", ["/to/", "/io/", "/io/calibration/", "/io/products/", "/eng/"])
+@pytest.mark.parametrize(
+    "url", ["/to/", "/io/", "/io/products/", "/eng/", "/eng/calibration/", "/eng/configuration/"]
+)
 def test_pages_render(client: Client, url: str) -> None:
     response = client.get(url)
     assert response.status_code == 200
@@ -115,7 +117,8 @@ def test_to_page_has_grant_refuse_and_revoke(client: Client) -> None:
     ("url", "title"),
     [
         ("/io/", "WILDS - Instrument Operator"),
-        ("/io/calibration/", "WILDS - Instrument Operator"),
+        ("/io/products/", "WILDS - Instrument Operator"),
+        ("/eng/calibration/", "WILDS - Engineering"),
         ("/to/", "WILDS - Telescope Operator"),
         ("/eng/", "WILDS - Engineering"),
     ],
@@ -130,15 +133,11 @@ def test_io_engineering_moved_to_eng(client: Client) -> None:
     assert "/io/engineering/" not in client.get("/io/").content.decode()  # not in the sidebar
 
 
-def test_eng_page_asks_for_the_passphrase_and_has_the_calibration_access_points(
-    client: Client,
-) -> None:
+def test_eng_page_asks_for_the_passphrase(client: Client) -> None:
     html = client.get("/eng/").content.decode()
     assert "$store.session.enterEngineering(this.passphrase)" in html
     assert "$store.session.release()" in html
     assert "$store.wilds.warnings" in html  # default-passphrase warning
-    for action in ("lamps", "slit", "adc", "focus", "bias", "dark", "flat"):
-        assert f"$store.wilds.action('cal_{action}')" in html
 
 
 def test_to_online_status_is_in_the_header_except_on_the_to_page(client: Client) -> None:
@@ -160,7 +159,8 @@ def test_io_page_warns_when_the_to_is_offline(client: Client) -> None:
         ("/telop/", "/to/"),
         ("/instrument-operator/", "/io/"),
         ("/instop/", "/io/"),
-        ("/instop/calibration/", "/io/calibration/"),
+        ("/instop/products/", "/io/products/"),
+        ("/engineering/calibration/", "/eng/calibration/"),
         ("/instrument-operator/products/", "/io/products/"),
         ("/engineering/", "/eng/"),
     ],
@@ -182,7 +182,8 @@ def test_alias_without_a_trailing_slash_gets_there_too(client: Client) -> None:
     ("url", "heading"),
     [
         ("/io/", "Instrument Operator"),
-        ("/io/calibration/", "Instrument Operator"),  # no area suffix
+        ("/io/products/", "Instrument Operator"),  # no area suffix
+        ("/eng/configuration/", "Engineering"),
         ("/to/", "Telescope Operator"),
         ("/eng/", "Engineering"),
     ],
@@ -214,7 +215,7 @@ def test_the_link_is_called_the_server(client: Client) -> None:
     assert "wilds-control: " not in html
 
 
-@pytest.mark.parametrize("url", ["/to/", "/io/", "/io/calibration/", "/eng/"])
+@pytest.mark.parametrize("url", ["/to/", "/io/", "/io/products/", "/eng/", "/eng/calibration/"])
 def test_no_template_comments_leak_into_the_page(client: Client, url: str) -> None:
     """Django's {# #} comments are single-line only; a multi-line one renders as visible text."""
     html = client.get(url).content.decode()
@@ -274,3 +275,60 @@ def test_clock_labels_are_bold_by_markup_not_only_by_css(client: Client) -> None
     html = client.get("/io/").content.decode()
     for label in ("LDT", "UT", "LT"):
         assert f'<strong class="ui-clock-label">{label}</strong>' in html
+
+
+def test_io_sidebar_has_only_operations_and_products(client: Client) -> None:
+    html = client.get("/io/").content.decode()
+    assert 'href="/io/operations/"' in html and 'href="/io/products/"' in html
+    for gone in ("/io/calibration/", "/io/configuration/", "/io/engineering/"):
+        assert f'href="{gone}"' not in html
+
+
+def test_eng_sidebar_has_monitoring_calibration_and_configuration(client: Client) -> None:
+    html = client.get("/eng/").content.decode()
+    for page in ("monitoring", "calibration", "configuration"):
+        assert f'href="/eng/{page}/"' in html
+    assert 'sidebar-item active" title="Monitoring"' in html
+    assert (
+        'sidebar-item active" title="Calibration"'
+        in client.get("/eng/calibration/").content.decode()
+    )
+
+
+@pytest.mark.parametrize(
+    ("old", "new"),
+    [("/io/calibration/", "/eng/calibration/"), ("/io/configuration/", "/eng/configuration/")],
+)
+def test_calibration_and_configuration_moved_from_io_to_eng(
+    client: Client, old: str, new: str
+) -> None:
+    response = client.get(old)
+    assert response.status_code == 302 and response["Location"] == new
+    assert client.get(new).status_code == 200
+
+
+def test_eng_pages_have_their_own_content(client: Client) -> None:
+    mon = client.get("/eng/").content.decode()
+    cal = client.get("/eng/calibration/").content.decode()
+    cfg = client.get("/eng/configuration/").content.decode()
+    assert "Archon VIS" in mon and "cal_lamps" not in mon and "cfg_slit" not in mon
+    for action in ("lamps", "slit", "adc", "focus", "bias", "dark", "flat"):
+        assert f"$store.wilds.action('cal_{action}')" in cal
+    assert "cal_lamps" not in cfg and "Archon VIS" not in cal
+    for component in (
+        "guide_camera",
+        "science_cameras",
+        "stages",
+        "slit",
+        "adc",
+        "lamps",
+        "autofocus",
+        "acquisition",
+        "telescope",
+        "storage",
+    ):
+        assert f"$store.wilds.action('cfg_{component}')" in cfg
+
+
+def test_unknown_eng_page_is_404(client: Client) -> None:
+    assert client.get("/eng/nothing/").status_code == 404

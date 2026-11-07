@@ -30,7 +30,11 @@ urlpatterns = [
     path("", RedirectView.as_view(url="/io/", permanent=False)),
     path("to/", views.to_page, name="to"),
     path("eng/", views.eng_page, name="eng"),
+    path("eng/<slug:page>/", views.eng_page, name="eng_page"),
+    # Calibration and configuration moved from /io to /eng.
     path("io/engineering/", RedirectView.as_view(url="/eng/", permanent=False)),
+    path("io/calibration/", RedirectView.as_view(url="/eng/calibration/", permanent=False)),
+    path("io/configuration/", RedirectView.as_view(url="/eng/configuration/", permanent=False)),
     path("io/", views.io_page, {"page": "operations"}, name="io"),
     path("io/<slug:page>/", views.io_page, name="io_page"),
     *_aliases(),

@@ -1,4 +1,7 @@
-{# Collapsible sidebar (MAST components/sidebar.html); collapsed state remembered per browser. #}
+{% comment %}
+Collapsible sidebar (MAST components/sidebar.html); collapsed state remembered per browser.
+Takes pages ((slug, label, icon) tuples) and url_name (the URL pattern that takes the slug).
+{% endcomment %}
 <nav class="sidebar" id="sidebar">
     <div class="sidebar-header">
         <button class="sidebar-toggle" type="button" onclick="uiToggleSidebar()" title="Collapse sidebar">
@@ -6,8 +9,8 @@
         </button>
     </div>
     <div class="sidebar-menu">
-        {% for slug, label, icon in io_pages %}
-            <a href="{% url 'io_page' slug %}" class="sidebar-item{% if slug == page %} active{% endif %}" title="{{ label }}">
+        {% for slug, label, icon in pages %}
+            <a href="{% url url_name slug %}" class="sidebar-item{% if slug == page %} active{% endif %}" title="{{ label }}">
                 <i class="bi {{ icon }}"></i>
                 <span class="sidebar-item-text">{{ label }}</span>
             </a>

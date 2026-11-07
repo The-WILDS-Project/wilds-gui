@@ -1,6 +1,7 @@
 {% extends "base.html" %}
 {% block title %}WILDS - Engineering{% endblock %}
 {% block heading %}Engineering{% endblock %}
+{% block sidebar %}{% include "components/sidebar.html" with pages=eng_pages url_name="eng_page" %}{% endblock %}
 {% block content %}
 {% comment %} Engineering mode (plan §3.11): the passphrase is checked by wilds-control, which gives this
    session the lease in engineering mode. No TO involvement; coordination is by Zoom or in person.
@@ -45,38 +46,58 @@
             <button type="button" class="btn btn-outline-secondary" @click="leave()">Release control</button>
         </div>
 
-        <div class="row g-3">
-            <div class="col-lg-6">
-                <div class="card h-100">
-                    <div class="card-header"><i class="bi bi-activity me-2"></i>Monitoring</div>
-                    <div class="card-body">
-                        <div class="row g-2">
-                            <div class="col-6 col-md-4">{% include "components/component_card.html" with name="Guide camera" status_text="Unknown" %}</div>
-                            <div class="col-6 col-md-4">{% include "components/component_card.html" with name="Slit" status_text="Unknown" %}</div>
-                            <div class="col-6 col-md-4">{% include "components/component_card.html" with name="ADC" status_text="Unknown" %}</div>
-                            <div class="col-6 col-md-4">{% include "components/component_card.html" with name="Lamps" status_text="Unknown" %}</div>
-                            <div class="col-6 col-md-4">{% include "components/component_card.html" with name="Archon VIS" status_text="Unknown" %}</div>
-                            <div class="col-6 col-md-4">{% include "components/component_card.html" with name="Archon UV" status_text="Unknown" %}</div>
-                        </div>
-                        <p class="text-body-secondary small mt-3 mb-0">Live values arrive when the server reports them.</p>
-                    </div>
+        {% if page == "monitoring" %}
+        <div class="card">
+            <div class="card-header"><i class="bi bi-activity me-2"></i>Monitoring</div>
+            <div class="card-body">
+                <div class="row g-2">
+                    <div class="col-6 col-md-4 col-xl-2">{% include "components/component_card.html" with name="Guide camera" status_text="Unknown" %}</div>
+                    <div class="col-6 col-md-4 col-xl-2">{% include "components/component_card.html" with name="Slit" status_text="Unknown" %}</div>
+                    <div class="col-6 col-md-4 col-xl-2">{% include "components/component_card.html" with name="ADC" status_text="Unknown" %}</div>
+                    <div class="col-6 col-md-4 col-xl-2">{% include "components/component_card.html" with name="Lamps" status_text="Unknown" %}</div>
+                    <div class="col-6 col-md-4 col-xl-2">{% include "components/component_card.html" with name="Archon VIS" status_text="Unknown" %}</div>
+                    <div class="col-6 col-md-4 col-xl-2">{% include "components/component_card.html" with name="Archon UV" status_text="Unknown" %}</div>
                 </div>
+                <p class="text-body-secondary small mt-3 mb-0">Live values arrive when the server reports them.</p>
             </div>
-            <div class="col-lg-6">
-                <div class="card h-100">
-                    <div class="card-header"><i class="bi bi-lightbulb me-2"></i>Calibration</div>
-                    <div class="card-body d-flex flex-wrap gap-2">
-                        {% include "components/action_button.html" with action="cal_lamps" label="Lamps" style="outline-primary" %}
-                        {% include "components/action_button.html" with action="cal_slit" label="Slit" style="outline-primary" %}
-                        {% include "components/action_button.html" with action="cal_adc" label="ADC" style="outline-primary" %}
-                        {% include "components/action_button.html" with action="cal_focus" label="Focus" style="outline-primary" %}
-                        {% include "components/action_button.html" with action="cal_bias" label="Bias" style="outline-primary" %}
-                        {% include "components/action_button.html" with action="cal_dark" label="Dark" style="outline-primary" %}
-                        {% include "components/action_button.html" with action="cal_flat" label="Flat" style="outline-primary" %}
-                    </div>
+        </div>
+        {% elif page == "calibration" %}
+        <div class="card">
+            <div class="card-header"><i class="bi bi-lightbulb me-2"></i>Calibration</div>
+            <div class="card-body d-flex flex-wrap gap-2">
+                {% include "components/action_button.html" with action="cal_lamps" label="Lamps" style="outline-primary" %}
+                {% include "components/action_button.html" with action="cal_slit" label="Slit" style="outline-primary" %}
+                {% include "components/action_button.html" with action="cal_adc" label="ADC" style="outline-primary" %}
+                {% include "components/action_button.html" with action="cal_focus" label="Focus" style="outline-primary" %}
+                {% include "components/action_button.html" with action="cal_bias" label="Bias" style="outline-primary" %}
+                {% include "components/action_button.html" with action="cal_dark" label="Dark" style="outline-primary" %}
+                {% include "components/action_button.html" with action="cal_flat" label="Flat" style="outline-primary" %}
+            </div>
+        </div>
+        {% elif page == "configuration" %}
+        <div class="card">
+            <div class="card-header"><i class="bi bi-sliders me-2"></i>Configuration</div>
+            <div class="card-body">
+                <p class="text-body-secondary small">
+                    One panel per component, with the settings the server applies to the hardware (plan §3.10).
+                    Deployment settings (broker host, device addresses, data paths) live in
+                    <code>config.toml</code> and are not edited here.
+                </p>
+                <div class="d-flex flex-wrap gap-2">
+                    {% include "components/action_button.html" with action="cfg_guide_camera" label="Guide camera" style="outline-primary" %}
+                    {% include "components/action_button.html" with action="cfg_science_cameras" label="Science cameras" style="outline-primary" %}
+                    {% include "components/action_button.html" with action="cfg_stages" label="Stages" style="outline-primary" %}
+                    {% include "components/action_button.html" with action="cfg_slit" label="Slit" style="outline-primary" %}
+                    {% include "components/action_button.html" with action="cfg_adc" label="ADC" style="outline-primary" %}
+                    {% include "components/action_button.html" with action="cfg_lamps" label="Calibration lamps" style="outline-primary" %}
+                    {% include "components/action_button.html" with action="cfg_autofocus" label="Autofocus" style="outline-primary" %}
+                    {% include "components/action_button.html" with action="cfg_acquisition" label="Acquisition" style="outline-primary" %}
+                    {% include "components/action_button.html" with action="cfg_telescope" label="Telescope interface" style="outline-primary" %}
+                    {% include "components/action_button.html" with action="cfg_storage" label="Data storage" style="outline-primary" %}
                 </div>
             </div>
         </div>
+        {% endif %}
     </div>
 </div>
 {% endblock %}
