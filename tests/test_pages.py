@@ -78,8 +78,11 @@ def test_header_shows_the_session_code_with_a_tooltip(client: Client) -> None:
 
 
 def test_holder_code_has_the_holder_origin_tooltip(client: Client) -> None:
-    html = client.get("/io/").content.decode()
-    assert 'x-tooltip="$store.wilds.control.holder_info"' in html
+    # /io shows it inside the control-status tooltip; /eng and /to on the holder's own code.
+    assert "$store.wilds.control.holder_info" in client.get("/io/").content.decode()
+    for url in ("/eng/", "/to/"):
+        html = client.get(url).content.decode()
+        assert 'x-tooltip="$store.wilds.control.holder_info"' in html
 
 
 def test_to_page_lists_sessions_with_provenance_tooltips(client: Client) -> None:
@@ -220,9 +223,20 @@ def test_no_template_comments_leak_into_the_page(client: Client, url: str) -> No
 
 
 def test_header_says_control_not_wilds_control(client: Client) -> None:
+    for url in ("/to/", "/eng/"):  # these show who holds control
+        html = client.get(url).content.decode()
+        assert "Control: <em>nobody</em>" in html
+        assert "WILDS control" not in html
+
+
+def test_io_topbar_shows_this_sessions_control_status(client: Client) -> None:
     html = client.get("/io/").content.decode()
-    assert "Control: <em>nobody</em>" in html
-    assert "WILDS control" not in html
+    assert "$store.session.controlStatus" in html
+    for word in ("Granted", "Requested", "Refused"):
+        assert f"'{word}'" in html
+    assert "<span>Control:</span>" in html
+    assert "Control: <em>nobody</em>" not in html  # the holder moved into the tooltip
+    assert "Held by " in html
 
 
 def test_session_badge_has_the_person_above_the_code(client: Client) -> None:
