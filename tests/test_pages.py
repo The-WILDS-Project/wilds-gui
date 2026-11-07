@@ -8,6 +8,7 @@ STATIC_IN_BASE = [
     "wilds/js/theme.js",
     "wilds/js/ui.js",
     "wilds/js/status.js",
+    "wilds/js/clock.js",
     "wilds/js/session.js",
     "wilds/css/tokens.css",
     "wilds/css/main.css",
@@ -34,7 +35,7 @@ def test_root_redirects_to_io(client: Client) -> None:
 
 
 @pytest.mark.parametrize(
-    "url", ["/to/", "/io/", "/io/calibration/", "/io/products/", "/io/engineering/"]
+    "url", ["/to/", "/io/", "/io/products/", "/eng/", "/eng/calibration/", "/eng/configuration/"]
 )
 def test_pages_render(client: Client, url: str) -> None:
     response = client.get(url)
@@ -79,8 +80,11 @@ def test_header_shows_the_session_code_with_a_tooltip(client: Client) -> None:
 
 
 def test_holder_code_has_the_holder_origin_tooltip(client: Client) -> None:
-    html = client.get("/io/").content.decode()
-    assert 'x-tooltip="$store.wilds.control.holder_info"' in html
+    # /io shows it inside the control-status tooltip; /eng and /to on the holder's own code.
+    assert "$store.wilds.control.holder_info" in client.get("/io/").content.decode()
+    for url in ("/eng/", "/to/"):
+        html = client.get(url).content.decode()
+        assert 'x-tooltip="$store.wilds.control.holder_info"' in html
 
 
 def test_to_page_lists_sessions_with_provenance_tooltips(client: Client) -> None:
@@ -107,3 +111,224 @@ def test_to_page_has_grant_refuse_and_revoke(client: Client) -> None:
     for call in ('@click="grant(r)"', '@click="refuse(r)"', '@click="revoke()"'):
         assert call in html
     assert 'action="revoke"' not in html
+
+
+@pytest.mark.parametrize(
+    ("url", "title"),
+    [
+        ("/io/", "WILDS - Instrument Operator"),
+        ("/io/products/", "WILDS - Instrument Operator"),
+        ("/eng/calibration/", "WILDS - Engineering"),
+        ("/to/", "WILDS - Telescope Operator"),
+        ("/eng/", "WILDS - Engineering"),
+    ],
+)
+def test_page_titles(client: Client, url: str, title: str) -> None:
+    assert f"<title>{title}</title>" in client.get(url).content.decode()
+
+
+def test_io_engineering_moved_to_eng(client: Client) -> None:
+    response = client.get("/io/engineering/")
+    assert response.status_code == 302 and response["Location"] == "/eng/"
+    assert "/io/engineering/" not in client.get("/io/").content.decode()  # not in the sidebar
+
+
+def test_eng_page_asks_for_the_passphrase(client: Client) -> None:
+    html = client.get("/eng/").content.decode()
+    assert "$store.session.enterEngineering(this.passphrase)" in html
+    assert "$store.session.release()" in html
+    assert "$store.wilds.warnings" in html  # default-passphrase warning
+
+
+def test_to_online_status_is_in_the_header_except_on_the_to_page(client: Client) -> None:
+    assert "$store.wilds.to.online" in client.get("/io/").content.decode()
+    assert "$store.wilds.to.online" in client.get("/eng/").content.decode()
+    assert "TO: " not in client.get("/to/").content.decode()  # the TO page is the TO
+
+
+def test_io_page_warns_when_the_to_is_offline(client: Client) -> None:
+    html = client.get("/io/").content.decode()
+    assert "The Telescope Operator is offline" in html
+    assert "$store.wilds.to.online === false" in html
+
+
+@pytest.mark.parametrize(
+    ("alias", "canonical"),
+    [
+        ("/telescope-operator/", "/to/"),
+        ("/telop/", "/to/"),
+        ("/instrument-operator/", "/io/"),
+        ("/instop/", "/io/"),
+        ("/instop/products/", "/io/products/"),
+        ("/engineering/calibration/", "/eng/calibration/"),
+        ("/instrument-operator/products/", "/io/products/"),
+        ("/engineering/", "/eng/"),
+    ],
+)
+def test_alias_paths_redirect_to_the_canonical_page(
+    client: Client, alias: str, canonical: str
+) -> None:
+    response = client.get(alias)
+    assert response.status_code == 302 and response["Location"] == canonical
+    assert client.get(canonical).status_code == 200
+
+
+def test_alias_without_a_trailing_slash_gets_there_too(client: Client) -> None:
+    response = client.get("/telop", follow=True)
+    assert response.redirect_chain[-1][0] == "/to/" and response.status_code == 200
+
+
+@pytest.mark.parametrize(
+    ("url", "heading"),
+    [
+        ("/io/", "Instrument Operator"),
+        ("/io/products/", "Instrument Operator"),  # no area suffix
+        ("/eng/configuration/", "Engineering"),
+        ("/to/", "Telescope Operator"),
+        ("/eng/", "Engineering"),
+    ],
+)
+def test_header_text_is_just_the_role(client: Client, url: str, heading: str) -> None:
+    html = client.get(url).content.decode()
+    assert f'<div class="ui-title">{heading}</div>' in html
+
+
+@pytest.mark.parametrize(("url", "has_lt"), [("/io/", True), ("/eng/", True), ("/to/", False)])
+def test_header_clocks_follow_the_title(client: Client, url: str, has_lt: bool) -> None:
+    html = client.get(url).content.decode()
+    assert html.index('class="ui-title"') < html.index('class="ui-clocks"')
+    assert "$store.clock.ldt" in html and "$store.clock.ut" in html
+    assert ("$store.clock.lt" in html) is has_lt
+    assert "wilds/js/clock.js" in html
+
+
+def test_to_page_has_no_session(client: Client) -> None:
+    html = client.get("/to/").content.decode()
+    assert "wilds/js/session.js" not in html  # no name prompt, not in its own viewers list
+    assert "$store.session" not in html  # no badge
+    assert "$store.session" in client.get("/io/").content.decode()
+
+
+def test_the_link_is_called_the_server(client: Client) -> None:
+    html = client.get("/io/").content.decode()
+    assert "'server: ' +" in html and ">Server</h6>" in html
+    assert "wilds-control: " not in html
+
+
+@pytest.mark.parametrize("url", ["/to/", "/io/", "/io/products/", "/eng/", "/eng/calibration/"])
+def test_no_template_comments_leak_into_the_page(client: Client, url: str) -> None:
+    """Django's {# #} comments are single-line only; a multi-line one renders as visible text."""
+    html = client.get(url).content.decode()
+    assert "{#" not in html and "#}" not in html
+    assert "{% comment" not in html and "{% endcomment" not in html
+
+
+def test_header_says_control_not_wilds_control(client: Client) -> None:
+    for url in ("/to/", "/eng/"):  # these show who holds control
+        html = client.get(url).content.decode()
+        assert "Control: <em>nobody</em>" in html
+        assert "WILDS control" not in html
+
+
+def test_io_topbar_shows_this_sessions_control_status(client: Client) -> None:
+    html = client.get("/io/").content.decode()
+    assert "$store.session.controlStatus" in html
+    for word in ("Granted", "Requested", "Refused"):
+        assert f"'{word}'" in html
+    assert "<span>Control:</span>" in html
+    assert "Control: <em>nobody</em>" not in html  # the holder moved into the tooltip
+    assert "Held by " in html
+
+
+def test_session_badge_has_the_person_above_the_code(client: Client) -> None:
+    html = client.get("/io/").content.decode()
+    name = html.index('x-text="$store.session.name"')
+    code = html.index('x-text="$store.session.code" x-tooltip')
+    assert name < code
+    assert '<div x-text="$store.session.name"></div>' in html  # its own line
+
+
+def test_own_css_and_js_carry_a_version_so_a_change_busts_the_browser_cache(client: Client) -> None:
+    import re
+
+    html = client.get("/to/").content.decode()
+    urls = re.findall(r'(?:href|src)="(/static/wilds/(?:css|js)/[^"]+)"', html)
+    assert urls and all(re.search(r"\?v=\d+$", u) for u in urls), urls
+    assert "/static/wilds/js/to.js?v=" in html
+
+
+def test_the_version_changes_when_a_static_file_changes(tmp_path, monkeypatch) -> None:
+    import os
+
+    from wilds.gui import context_processors as cp
+
+    (tmp_path / "a.css").write_text("x")
+    monkeypatch.setattr(cp, "_STATIC", tmp_path)
+    monkeypatch.setattr(cp.settings, "DEBUG", True)
+    os.utime(tmp_path / "a.css", (1000, 1000))
+    assert cp._asset_version() == 1000
+    os.utime(tmp_path / "a.css", (2000, 2000))
+    assert cp._asset_version() == 2000
+
+
+def test_clock_labels_are_bold_by_markup_not_only_by_css(client: Client) -> None:
+    html = client.get("/io/").content.decode()
+    for label in ("LDT", "UT", "LT"):
+        assert f'<strong class="ui-clock-label">{label}</strong>' in html
+
+
+def test_io_sidebar_has_only_operations_and_products(client: Client) -> None:
+    html = client.get("/io/").content.decode()
+    assert 'href="/io/operations/"' in html and 'href="/io/products/"' in html
+    for gone in ("/io/calibration/", "/io/configuration/", "/io/engineering/"):
+        assert f'href="{gone}"' not in html
+
+
+def test_eng_sidebar_has_monitoring_calibration_and_configuration(client: Client) -> None:
+    html = client.get("/eng/").content.decode()
+    for page in ("monitoring", "calibration", "configuration"):
+        assert f'href="/eng/{page}/"' in html
+    assert 'sidebar-item active" title="Monitoring"' in html
+    assert (
+        'sidebar-item active" title="Calibration"'
+        in client.get("/eng/calibration/").content.decode()
+    )
+
+
+@pytest.mark.parametrize(
+    ("old", "new"),
+    [("/io/calibration/", "/eng/calibration/"), ("/io/configuration/", "/eng/configuration/")],
+)
+def test_calibration_and_configuration_moved_from_io_to_eng(
+    client: Client, old: str, new: str
+) -> None:
+    response = client.get(old)
+    assert response.status_code == 302 and response["Location"] == new
+    assert client.get(new).status_code == 200
+
+
+def test_eng_pages_have_their_own_content(client: Client) -> None:
+    mon = client.get("/eng/").content.decode()
+    cal = client.get("/eng/calibration/").content.decode()
+    cfg = client.get("/eng/configuration/").content.decode()
+    assert "Archon VIS" in mon and "cal_lamps" not in mon and "cfg_slit" not in mon
+    for action in ("lamps", "slit", "adc", "focus", "bias", "dark", "flat"):
+        assert f"$store.wilds.action('cal_{action}')" in cal
+    assert "cal_lamps" not in cfg and "Archon VIS" not in cal
+    for component in (
+        "guide_camera",
+        "science_cameras",
+        "stages",
+        "slit",
+        "adc",
+        "lamps",
+        "autofocus",
+        "acquisition",
+        "telescope",
+        "storage",
+    ):
+        assert f"$store.wilds.action('cfg_{component}')" in cfg
+
+
+def test_unknown_eng_page_is_404(client: Client) -> None:
+    assert client.get("/eng/nothing/").status_code == 404

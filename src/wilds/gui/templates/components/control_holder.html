@@ -1,9 +1,9 @@
-{# "WILDS control: held by X" on every page (plan §3.11). #}
+{# "Control: held by X" on every page (plan §3.11). #}
 <div x-data class="d-flex align-items-center gap-2">
     <i class="bi bi-person-badge"></i>
-    <span x-show="!$store.wilds.control.holder">WILDS control: <em>nobody</em></span>
+    <span x-show="!$store.wilds.control.holder">Control: <em>nobody</em></span>
     <span x-show="$store.wilds.control.holder && !$store.wilds.control.engineering">
-        WILDS control: <strong x-text="$store.wilds.control.holder"></strong>
+        Control: <strong x-text="$store.wilds.control.holder"></strong>
         <code x-show="$store.wilds.control.holder_code" x-text="$store.wilds.control.holder_code"
               x-tooltip="$store.wilds.control.holder_info" style="cursor: help;"></code>
     </span>

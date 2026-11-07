@@ -1,7 +1,9 @@
-{# This browser's session: name and short code; hover the code for where it comes from. #}
+{# This browser's session: the person on the first line, the short code below it; hover the code for where it comes from. #}
 <div x-data class="d-flex align-items-center gap-2" x-show="$store.session.code">
-    <i class="bi bi-person-circle"></i>
-    <span x-text="$store.session.name"></span>
-    <code x-text="$store.session.code" x-tooltip="$store.session.provenance"
-          style="cursor: help;"></code>
+    <i class="bi bi-person-circle fs-5"></i>
+    <div class="lh-sm">
+        <div x-text="$store.session.name"></div>
+        <div><code x-text="$store.session.code" x-tooltip="$store.session.provenance"
+                   style="cursor: help;"></code></div>
+    </div>
 </div>

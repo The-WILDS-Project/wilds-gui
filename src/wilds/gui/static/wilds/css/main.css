@@ -12,7 +12,8 @@ body {
 
 /* Header (MAST: 80 px, logos left and right) */
 .ui-header {
-    height: 80px;
+    min-height: 80px;            /* grows when the middle group wraps on a narrow window */
+    padding-block: 0.25rem;
     background: var(--ui-header-bg);
     border-bottom: 1px solid var(--ui-border);
 }
@@ -21,7 +22,13 @@ body {
     font-size: 1.5rem;
     font-weight: bold;
     letter-spacing: 0.05em;
+    white-space: nowrap;
 }
+
+/* Topbar items stay on one line; the middle group gives way before they wrap. */
+.ui-header .container-fluid > * { flex-shrink: 0; }
+.ui-header .container-fluid > .flex-grow-1 { flex-shrink: 1; min-width: 0; flex-wrap: wrap; gap: 0.25rem 1.25rem !important; }
+.ui-header .container-fluid > .flex-grow-1 > * { white-space: nowrap; }
 
 .ui-main {
     min-height: calc(100vh - 80px);
@@ -189,3 +196,30 @@ body {
     text-align: left;
     max-width: 420px;
 }
+
+/* Header clocks: stacked, fixed width digits, dimmed while the server clock is not live. */
+.ui-clocks {
+    font-family: var(--bs-font-monospace);
+    font-size: 0.72rem;
+    line-height: 1.15;
+    cursor: help;
+}
+.ui-clocks {
+    width: 16.5ch;               /* label + "03:11:10 am", so nothing moves as the digits change */
+}
+.ui-clocks > div {
+    display: flex;
+    justify-content: space-between;
+    align-items: baseline;
+    white-space: pre;
+    font-variant-numeric: tabular-nums;
+}
+.ui-clocks .ui-clock-label {
+    font-weight: 700;            /* left-justified */
+    color: var(--bs-body-color);
+}
+.ui-clocks .ui-clock-label + span {
+    min-width: 11ch;
+    text-align: right;           /* the values line up on their right edge */
+}
+.ui-clocks.stale { opacity: 0.5; }

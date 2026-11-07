@@ -219,6 +219,10 @@ document.addEventListener("alpine:init", () => {
         let instance = null;
         effect(() => {
             getText((value) => {
+                if (value && instance) {
+                    instance.setContent({ ".tooltip-inner": String(value) });  // no flicker while hovering
+                    return;
+                }
                 instance?.dispose();
                 instance = value
                     ? new bootstrap.Tooltip(el, { html: false, placement: "top", title: String(value) })

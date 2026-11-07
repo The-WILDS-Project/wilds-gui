@@ -4,16 +4,32 @@ from django.shortcuts import render
 # The /io pages, in sidebar order: (slug, label, Bootstrap icon).
 IO_PAGES = [
     ("operations", "Operations", "bi-binoculars"),
-    ("calibration", "Calibration", "bi-lightbulb"),
     ("products", "Products", "bi-images"),
+]
+
+# The /eng pages, in sidebar order.
+ENG_PAGES = [
+    ("monitoring", "Monitoring", "bi-activity"),
+    ("calibration", "Calibration", "bi-lightbulb"),
     ("configuration", "Configuration", "bi-sliders"),
-    ("engineering", "Engineering", "bi-wrench-adjustable"),
 ]
 
 
 def to_page(request: HttpRequest) -> HttpResponse:
     """The Telescope Operator's page: status, requests, grant/revoke (plan §3.11)."""
     return render(request, "to/index.html")
+
+
+def eng_page(request: HttpRequest, page: str = "monitoring") -> HttpResponse:
+    """The engineering pages (monitoring, calibration, configuration), behind the passphrase."""
+    labels = {slug: label for slug, label, _ in ENG_PAGES}
+    if page not in labels:
+        raise Http404(page)
+    return render(
+        request,
+        "eng/index.html",
+        {"eng_pages": ENG_PAGES, "page": page, "page_label": labels[page]},
+    )
 
 
 def io_page(request: HttpRequest, page: str) -> HttpResponse:

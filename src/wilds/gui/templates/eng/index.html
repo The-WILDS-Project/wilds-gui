@@ -1,0 +1,103 @@
+{% extends "base.html" %}
+{% block title %}WILDS - Engineering{% endblock %}
+{% block heading %}Engineering{% endblock %}
+{% block sidebar %}{% include "components/sidebar.html" with pages=eng_pages url_name="eng_page" %}{% endblock %}
+{% block content %}
+{% comment %} Engineering mode (plan §3.11): the passphrase is checked by wilds-control, which gives this
+   session the lease in engineering mode. No TO involvement; coordination is by Zoom or in person.
+   The page stays unlocked across reloads because the heartbeat reports the lease.
+{% endcomment %}
+<div x-data="{ passphrase: '', error: null, busy: false,
+               async enter() {
+                   this.busy = true; this.error = null;
+                   try { await $store.session.enterEngineering(this.passphrase); this.passphrase = ''; }
+                   catch (e) { this.error = String(e.message || e); }
+                   this.busy = false;
+               },
+               async leave() {
+                   try { await $store.session.release(); }
+                   catch (e) { showToast('error', 'Could not release control', String(e.message || e)); }
+               } }">
+
+    <div class="alert alert-warning py-2" role="alert" x-show="$store.wilds.warnings.length > 0">
+        <i class="bi bi-exclamation-triangle me-2"></i><span x-text="$store.wilds.warnings.join('; ')"></span>
+    </div>
+
+    <div class="card" style="max-width: 460px;" x-show="!$store.session.engineering">
+        <div class="card-header"><i class="bi bi-wrench-adjustable me-2"></i>Engineering</div>
+        <div class="card-body">
+            <p class="text-body-secondary small">
+                Entering the passphrase takes control of the WILDS mechanisms (stages, lamps, cameras,
+                calibration) in engineering mode. Whoever holds control now drops to read-only. Telescope
+                commands still need the Telescope Operator.
+            </p>
+            <form @submit.prevent="enter()" class="d-flex gap-2">
+                <input type="password" class="form-control" x-model="passphrase" autocomplete="off"
+                       placeholder="Engineering passphrase" :disabled="busy">
+                <button type="submit" class="btn btn-primary" :disabled="busy || !passphrase">Enter</button>
+            </form>
+            <p class="text-danger small mt-2 mb-0" x-show="error" x-text="error"></p>
+        </div>
+    </div>
+
+    <div x-show="$store.session.engineering">
+        <div class="d-flex align-items-center justify-content-between mb-3">
+            <h4 class="mb-0"><span class="badge ui-warning me-2">engineering mode</span>You hold control</h4>
+            <button type="button" class="btn btn-outline-secondary" @click="leave()">Release control</button>
+        </div>
+
+        {% if page == "monitoring" %}
+        <div class="card">
+            <div class="card-header"><i class="bi bi-activity me-2"></i>Monitoring</div>
+            <div class="card-body">
+                <div class="row g-2">
+                    <div class="col-6 col-md-4 col-xl-2">{% include "components/component_card.html" with name="Guide camera" status_text="Unknown" %}</div>
+                    <div class="col-6 col-md-4 col-xl-2">{% include "components/component_card.html" with name="Slit" status_text="Unknown" %}</div>
+                    <div class="col-6 col-md-4 col-xl-2">{% include "components/component_card.html" with name="ADC" status_text="Unknown" %}</div>
+                    <div class="col-6 col-md-4 col-xl-2">{% include "components/component_card.html" with name="Lamps" status_text="Unknown" %}</div>
+                    <div class="col-6 col-md-4 col-xl-2">{% include "components/component_card.html" with name="Archon VIS" status_text="Unknown" %}</div>
+                    <div class="col-6 col-md-4 col-xl-2">{% include "components/component_card.html" with name="Archon UV" status_text="Unknown" %}</div>
+                </div>
+                <p class="text-body-secondary small mt-3 mb-0">Live values arrive when the server reports them.</p>
+            </div>
+        </div>
+        {% elif page == "calibration" %}
+        <div class="card">
+            <div class="card-header"><i class="bi bi-lightbulb me-2"></i>Calibration</div>
+            <div class="card-body d-flex flex-wrap gap-2">
+                {% include "components/action_button.html" with action="cal_lamps" label="Lamps" style="outline-primary" %}
+                {% include "components/action_button.html" with action="cal_slit" label="Slit" style="outline-primary" %}
+                {% include "components/action_button.html" with action="cal_adc" label="ADC" style="outline-primary" %}
+                {% include "components/action_button.html" with action="cal_focus" label="Focus" style="outline-primary" %}
+                {% include "components/action_button.html" with action="cal_bias" label="Bias" style="outline-primary" %}
+                {% include "components/action_button.html" with action="cal_dark" label="Dark" style="outline-primary" %}
+                {% include "components/action_button.html" with action="cal_flat" label="Flat" style="outline-primary" %}
+            </div>
+        </div>
+        {% elif page == "configuration" %}
+        <div class="card">
+            <div class="card-header"><i class="bi bi-sliders me-2"></i>Configuration</div>
+            <div class="card-body">
+                <p class="text-body-secondary small">
+                    One panel per component, with the settings the server applies to the hardware (plan §3.10).
+                    Deployment settings (broker host, device addresses, data paths) live in
+                    <code>config.toml</code> and are not edited here.
+                </p>
+                <div class="d-flex flex-wrap gap-2">
+                    {% include "components/action_button.html" with action="cfg_guide_camera" label="Guide camera" style="outline-primary" %}
+                    {% include "components/action_button.html" with action="cfg_science_cameras" label="Science cameras" style="outline-primary" %}
+                    {% include "components/action_button.html" with action="cfg_stages" label="Stages" style="outline-primary" %}
+                    {% include "components/action_button.html" with action="cfg_slit" label="Slit" style="outline-primary" %}
+                    {% include "components/action_button.html" with action="cfg_adc" label="ADC" style="outline-primary" %}
+                    {% include "components/action_button.html" with action="cfg_lamps" label="Calibration lamps" style="outline-primary" %}
+                    {% include "components/action_button.html" with action="cfg_autofocus" label="Autofocus" style="outline-primary" %}
+                    {% include "components/action_button.html" with action="cfg_acquisition" label="Acquisition" style="outline-primary" %}
+                    {% include "components/action_button.html" with action="cfg_telescope" label="Telescope interface" style="outline-primary" %}
+                    {% include "components/action_button.html" with action="cfg_storage" label="Data storage" style="outline-primary" %}
+                </div>
+            </div>
+        </div>
+        {% endif %}
+    </div>
+</div>
+{% endblock %}

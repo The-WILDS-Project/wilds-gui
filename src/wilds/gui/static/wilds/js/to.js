@@ -93,7 +93,7 @@ document.addEventListener("alpine:init", () => {
                 this.viewers = view.viewers;
                 this.error = null;
             } catch (e) {
-                this.error = `wilds-control: ${e.message || e}`;
+                this.error = `server: ${e.message || e}`;
             }
             this.timer = setTimeout(() => this.poll(), POLL_MS);
         },

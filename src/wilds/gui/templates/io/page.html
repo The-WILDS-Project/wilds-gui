@@ -1,8 +1,14 @@
 {% extends "base.html" %}
-{% block title %}WILDS · {{ page_label }}{% endblock %}
-{% block role %}Instrument Operator · {{ page_label }}{% endblock %}
-{% block sidebar %}{% include "components/sidebar.html" %}{% endblock %}
+{% block title %}WILDS - Instrument Operator{% endblock %}
+{% block heading %}Instrument Operator{% endblock %}
+{% block control %}{% include "components/control_status.html" %}{% endblock %}
+{% block sidebar %}{% include "components/sidebar.html" with pages=io_pages url_name="io_page" %}{% endblock %}
 {% block content %}
+<div x-data x-show="$store.wilds.to.online === false" class="alert alert-warning py-2" role="status">
+    <i class="bi bi-person-x me-2"></i>The Telescope Operator is offline. A control request waits
+    until they come online; the status above updates by itself.
+</div>
+
 <div class="d-flex align-items-center justify-content-between mb-3">
     <h4 class="mb-0">{{ page_label }}</h4>
     <div class="d-flex align-items-center gap-2">

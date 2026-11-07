@@ -1,4 +1,4 @@
-{# Link to wilds-control (MAST components/controller_status.html, fed by the status stream). #}
+{# Link to the server, i.e. wilds-control (MAST components/controller_status.html, fed by the status stream). #}
 <div class="dropdown" x-data>
     <button class="btn btn-sm btn-link dropdown-toggle text-decoration-none text-body" type="button"
             data-bs-toggle="dropdown" aria-expanded="false">
@@ -6,10 +6,10 @@
               :class="{ ok: 'status-ok', connecting: 'status-warning', offline: 'status-error' }[$store.wilds.link]"
               aria-hidden="true"></span>
         <span class="d-none d-lg-inline"
-              x-text="'wilds-control: ' + { ok: 'OK', connecting: 'connecting', offline: 'offline' }[$store.wilds.link]"></span>
+              x-text="'server: ' + { ok: 'OK', connecting: 'connecting', offline: 'offline' }[$store.wilds.link]"></span>
     </button>
     <div class="dropdown-menu dropdown-menu-end p-3" style="min-width: 300px;">
-        <h6 class="dropdown-header px-0">wilds-control</h6>
+        <h6 class="dropdown-header px-0">Server</h6>
         <div class="small text-body-secondary">{{ wilds_control_url }}</div>
         <div class="small mt-2">
             Last update:
