@@ -1,0 +1,76 @@
+/*
+ * The guide-camera dock (templates/components/camera_dock.html): to the right of the page,
+ * as wide as the working size needs, sticky so it stays in view while a long panel scrolls.
+ */
+.camera-dock {
+    flex-shrink: 0;
+    align-self: flex-start;
+    position: sticky;
+    top: 0;
+    max-height: 100vh;
+    overflow-y: auto;
+    background: var(--ui-sidebar-bg);
+    border-left: 1px solid var(--ui-border);
+    transition: width 0.2s ease;
+}
+
+.camera-dock.dock-dock { width: 540px; }
+.camera-dock.dock-thumb { width: 252px; }
+.camera-dock.dock-off { width: 48px; }
+
+.dock-rail {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 0.6rem;
+    padding: 0.6rem 0;
+}
+
+.dock-panel { padding: 0.6rem; }
+
+.dock-head {
+    display: flex;
+    align-items: center;
+    gap: 0.4rem;
+    margin-bottom: 0.5rem;
+    white-space: nowrap;
+}
+
+/* In the thumbnail the status words give way to the buttons. */
+.dock-thumb .dock-state { display: none; }
+
+/* The frame keeps the sensor's shape (the aspect ratio comes from the frame's metadata). */
+.dock-frame {
+    position: relative;
+    width: 100%;
+    background: #000;
+    border: 1px solid var(--ui-border);
+    border-radius: 0.25rem;
+    overflow: hidden;
+}
+
+.dock-frame img {
+    display: block;
+    width: 100%;
+    height: 100%;
+    object-fit: contain;
+}
+
+.dock-empty {
+    position: absolute;
+    inset: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 0.5rem;
+    text-align: center;
+}
+
+.dock-lines { margin-top: 0.4rem; line-height: 1.35; }
+.dock-thumb .dock-lines { font-size: 0.75rem; }
+
+.dock-controls {
+    margin-top: 0.75rem;
+    padding-top: 0.75rem;
+    border-top: 1px solid var(--ui-border);
+}
