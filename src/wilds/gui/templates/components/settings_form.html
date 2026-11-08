@@ -1,0 +1,128 @@
+{% comment %}
+The generic settings form (plan §3.10, static/wilds/js/config.js): one component's settings, built
+from the schema wilds-control serves, saved as the changed fields plus the version loaded.
+{% endcomment %}
+<div x-data="settingsForm()">
+    <p class="text-body-secondary" x-show="names.length === 0 && !error">No component has settings yet.</p>
+
+    <div class="d-flex flex-wrap gap-2 mb-3" x-show="names.length > 0">
+        <template x-for="name in names" :key="name">
+            <button type="button" class="btn btn-sm"
+                    :class="name === component ? 'btn-primary' : 'btn-outline-primary'"
+                    @click="select(name, slice)" x-text="pretty(name)"></button>
+        </template>
+    </div>
+
+    <div class="alert alert-danger py-2" role="alert" x-show="error">
+        <i class="bi bi-exclamation-octagon me-2"></i><span x-text="error"></span>
+    </div>
+
+    <div x-show="component">
+        <div class="d-flex align-items-center justify-content-between mb-2">
+            <div class="btn-group btn-group-sm" role="group" x-show="slices.length > 1">
+                <button type="button" class="btn" :class="slice === 'conf' ? 'btn-secondary' : 'btn-outline-secondary'"
+                        @click="select(component, 'conf')">Settings</button>
+                <button type="button" class="btn" :class="slice === 'cal' ? 'btn-secondary' : 'btn-outline-secondary'"
+                        @click="select(component, 'cal')">Calibration</button>
+            </div>
+            <span class="text-body-secondary small">Version <span x-text="version"></span></span>
+        </div>
+
+        <div class="alert alert-warning py-2 d-flex align-items-center justify-content-between" role="alert" x-show="stale">
+            <span><i class="bi bi-exclamation-triangle me-2"></i>These settings changed elsewhere<span x-show="elsewhere" x-text="' (' + elsewhere + ')'"></span>. Reloading discards your edits.</span>
+            <button type="button" class="btn btn-sm btn-warning" @click="load()">Reload</button>
+        </div>
+
+        <template x-for="f in fields" :key="f.key">
+            <div class="row align-items-start mb-2" :class="changed(f.key) ? 'ui-changed' : ''">
+                <label class="col-sm-3 col-form-label">
+                    <span x-text="f.label"></span>
+                    <i class="bi bi-info-circle ms-1 text-body-secondary" x-show="f.help" x-tooltip="f.help"></i>
+                </label>
+                <div class="col-sm-9">
+                    <div class="d-flex align-items-center gap-2 flex-wrap">
+                        <template x-if="f.nullable && f.kind !== 'choice'">
+                            <div class="form-check mb-0">
+                                <input class="form-check-input" type="checkbox" :checked="isSet(f)"
+                                       @change="toggleSet(f, $event.target.checked)" :disabled="!canEdit">
+                                <label class="form-check-label small">set</label>
+                            </div>
+                        </template>
+
+                        <template x-if="f.kind === 'bool'">
+                            <div class="form-check form-switch mb-0">
+                                <input class="form-check-input" type="checkbox" role="switch" x-model="draft[f.key]" :disabled="!canEdit">
+                            </div>
+                        </template>
+                        <template x-if="(f.kind === 'int' || f.kind === 'number') && isSet(f)">
+                            <input type="number" class="form-control form-control-sm w-auto" x-model.number="draft[f.key]"
+                                   :min="f.min" :max="f.max" :step="f.kind === 'int' ? 1 : 'any'"
+                                   :class="issue(f) ? 'is-invalid' : ''" :disabled="!canEdit">
+                        </template>
+                        <template x-if="f.kind === 'choice'">
+                            <select class="form-select form-select-sm w-auto" @change="pick(f, $event)" :disabled="!canEdit">
+                                <template x-for="c in f.choices" :key="String(c)">
+                                    <option :selected="c === draft[f.key]" x-text="choiceText(c)"></option>
+                                </template>
+                            </select>
+                        </template>
+                        <template x-if="f.kind === 'text'">
+                            <input type="text" class="form-control form-control-sm w-auto" x-model="draft[f.key]" :disabled="!canEdit">
+                        </template>
+                        <template x-if="f.kind === 'group' && isSet(f)">
+                            <div class="d-flex flex-wrap gap-2">
+                                <template x-for="c in f.children" :key="c.key">
+                                    <div class="input-group input-group-sm w-auto">
+                                        <span class="input-group-text" x-text="c.label"></span>
+                                        <input type="number" class="form-control" style="width: 6rem;" x-model.number="draft[f.key][c.key]"
+                                               :min="c.min" :max="c.max" step="1" :disabled="!canEdit">
+                                    </div>
+                                </template>
+                            </div>
+                        </template>
+
+                        <span class="text-body-secondary small" x-show="f.unit && isSet(f)" x-text="f.unit"></span>
+                        <span class="text-body-secondary small" x-show="f.nullable && !isSet(f) && f.kind !== 'choice'">not set</span>
+                        <button type="button" class="btn btn-link btn-sm p-0" x-show="changed(f.key)" @click="revert(f)"
+                                title="Undo this edit"><i class="bi bi-arrow-counterclockwise"></i></button>
+                    </div>
+                    <div class="text-danger small" x-show="issue(f)" x-text="issue(f)"></div>
+                </div>
+            </div>
+        </template>
+
+        <div class="d-flex align-items-center gap-2 mt-3">
+            <input type="text" class="form-control form-control-sm" style="max-width: 22rem;" x-model="reason"
+                   placeholder="Reason (optional, kept in the history)" :disabled="!canEdit">
+            <span x-data :class="whyNotSave ? 'ui-unavailable' : ''" x-tooltip="whyNotSave">
+                <button type="button" class="btn btn-primary" :disabled="!!whyNotSave || saving" @click="save()">Save</button>
+            </span>
+            <button type="button" class="btn btn-outline-secondary" :disabled="!dirty" @click="draft = JSON.parse(JSON.stringify(loaded.values))">Discard edits</button>
+            <button type="button" class="btn btn-link ms-auto" @click="toggleHistory()">
+                <i class="bi bi-clock-history me-1"></i>History
+            </button>
+        </div>
+
+        <div class="mt-3" x-show="showHistory">
+            <table class="table table-sm align-middle">
+                <thead><tr><th>Version</th><th>When</th><th>Who</th><th>Changed</th><th>Reason</th><th></th></tr></thead>
+                <tbody>
+                    <template x-for="h in history" :key="h.version">
+                        <tr>
+                            <td x-text="h.version"></td>
+                            <td x-text="when(h.at_ms)"></td>
+                            <td x-text="h.who"></td>
+                            <td x-text="h.changed.join(', ')"></td>
+                            <td x-text="(h.reverted_from ? 'reverted to ' + h.reverted_from + (h.reason ? ': ' : '') : '') + (h.reason || '')"></td>
+                            <td>
+                                <button type="button" class="btn btn-sm btn-outline-secondary" x-show="h.version !== version"
+                                        :disabled="!canEdit" @click="revertTo(h.version)">Restore</button>
+                            </td>
+                        </tr>
+                    </template>
+                </tbody>
+            </table>
+            <p class="text-body-secondary small" x-show="history.length === 0">Nothing saved yet: these are the defaults.</p>
+        </div>
+    </div>
+</div>

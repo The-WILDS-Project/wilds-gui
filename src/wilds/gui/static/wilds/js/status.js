@@ -12,6 +12,7 @@ document.addEventListener("alpine:init", () => {
         activities: {},              // {component: [{name, since_ms, details}]}, running only (plan §3.13)
         jobs: [],                    // active jobs, then the last few finished (plan §3.14)
         guide_camera: null,          // {kind, streaming, exposing, settings, cooler, last_frame_id}; null until known
+        conf_versions: {},           // {"component/slice": version}: an open settings form compares it with what it loaded
         lastUpdate: null,
         control: { holder: null, engineering: false, holder_code: null, holder_info: null },
         time: null,                  // the server's clock: {utc_ms, zone}

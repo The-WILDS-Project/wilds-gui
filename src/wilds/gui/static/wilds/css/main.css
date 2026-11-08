@@ -208,3 +208,6 @@ body {
     text-align: right;           /* the values line up on their right edge */
 }
 .ui-clocks.stale { opacity: 0.5; }
+
+/* A settings-form row whose value differs from what is saved. */
+.ui-changed { border-left: 3px solid var(--bs-warning); padding-left: .5rem; margin-left: -.75rem; }

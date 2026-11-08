@@ -12,6 +12,7 @@ STATIC_IN_BASE = [
     "wilds/js/session.js",
     "wilds/js/jobs.js",
     "wilds/js/camera.js",
+    "wilds/js/config.js",
     "wilds/css/tokens.css",
     "wilds/css/main.css",
     "wilds/css/notifications.css",
@@ -71,7 +72,7 @@ def test_vendored_libraries_keep_their_licences() -> None:
 
 def test_ui_js_never_inserts_html() -> None:
     """Session names come from anonymous visitors, so no innerHTML / insertAdjacentHTML."""
-    for name in ("ui.js", "status.js", "theme.js", "jobs.js", "camera.js"):
+    for name in ("ui.js", "status.js", "theme.js", "jobs.js", "camera.js", "config.js"):
         text = Path(finders.find(f"wilds/js/{name}")).read_text()
         assert "innerHTML" not in text and "insertAdjacentHTML" not in text, name
 
@@ -319,19 +320,10 @@ def test_eng_pages_have_their_own_content(client: Client) -> None:
     for action in ("lamps", "slit", "adc", "focus", "bias", "dark", "flat"):
         assert f"$store.wilds.action('cal_{action}')" in cal
     assert "cal_lamps" not in cfg and "Archon VIS" not in cal
-    for component in (
-        "guide_camera",
-        "science_cameras",
-        "stages",
-        "slit",
-        "adc",
-        "lamps",
-        "autofocus",
-        "acquisition",
-        "telescope",
-        "storage",
-    ):
-        assert f"$store.wilds.action('cfg_{component}')" in cfg
+    # the placeholder buttons gave way to the generic settings form
+    assert "cfg_" not in cfg
+    assert 'x-data="settingsForm()"' in cfg and "wilds/js/config.js" in cfg
+    assert "settingsForm" not in mon and "settingsForm" not in cal
 
 
 def test_unknown_eng_page_is_404(client: Client) -> None:
