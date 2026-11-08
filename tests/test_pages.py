@@ -381,3 +381,17 @@ def test_operator_and_engineering_pages_have_the_camera_dock(client: Client, url
 
 def test_the_to_page_has_no_camera_dock(client: Client) -> None:
     assert "camera-dock" not in client.get("/to/").content.decode()
+
+
+def test_engineering_pages_use_the_app_tooltips_not_native_titles(client: Client) -> None:
+    for url in ("/eng/", "/eng/calibration/", "/eng/configuration/"):
+        html = client.get(url).content.decode()
+        assert 'title="Undo' not in html, url
+    cfg = client.get("/eng/configuration/").content.decode()
+    assert "x-tooltip=\"'Undo this edit'\"" in cfg and 'x-tooltip="f.help"' in cfg
+    assert 'x-tooltip="whyNotSave"' in cfg
+
+
+def test_session_no_longer_lists_the_replaced_cfg_actions() -> None:
+    text = Path(finders.find("wilds/js/session.js")).read_text()
+    assert "cfg_" not in text
