@@ -211,3 +211,7 @@ body {
 
 /* A settings-form row whose value differs from what is saved. */
 .ui-changed { border-left: 3px solid var(--bs-warning); padding-left: .5rem; margin-left: -.75rem; }
+
+/* Alpine's x-show hides with an inline display:none, which Bootstrap's !important display
+   utilities (d-flex, d-inline-flex, …) override: a hidden element would stay visible. */
+[x-show][style*="display: none"] { display: none !important; }

@@ -400,3 +400,10 @@ def test_session_no_longer_lists_the_replaced_cfg_actions() -> None:
 def test_the_form_ignores_a_status_older_than_its_own_save() -> None:
     text = Path(finders.find("wilds/js/config.js")).read_text()
     assert "seen <= this.loaded.version" in text
+
+
+def test_x_show_beats_bootstrap_display_utilities() -> None:
+    """d-flex is !important, so without this rule an x-show="false" d-flex element stays visible
+    (the settings form's 'changed elsewhere' banner was always shown)."""
+    css = Path(finders.find("wilds/css/main.css")).read_text()
+    assert '[x-show][style*="display: none"] { display: none !important; }' in css
