@@ -8,6 +8,13 @@
 document.addEventListener("alpine:init", () => {
     const KEY = "wilds.toPassphrase";
     const POLL_MS = 5000;
+    // A request that never answers must not end the polling: the next poll is only scheduled
+    // after this one, and the polling is what tells wilds-control the TO is there.
+    const TIMEOUT_MS = 10000;
+    // Chrome runs a hidden tab's chained timers about once a minute after five minutes, which
+    // leaves little margin against the server's 75 s presence timeout. Timers inside a Web
+    // Worker are not throttled, so one worker keeps the beat and the page polls on its messages.
+    const BEAT = "setInterval(() => postMessage(0), " + POLL_MS + ");";
     const base = document.body.dataset.controlUrl;
 
     Alpine.data("toSessions", () => ({
@@ -19,11 +26,29 @@ document.addEventListener("alpine:init", () => {
         viewers: [],
         error: null,
         timer: null,
+        worker: null,
+        polling: false,
 
         get unlocked() { return this.passphrase !== ""; },
 
         start() {
+            this.startBeat();
             if (this.unlocked) this.poll();
+            // A hidden tab's timers are throttled (about one a minute) and a sleeping laptop
+            // misses its polls: show up at once when the tab or the network comes back.
+            const again = () => { if (this.unlocked && !document.hidden) this.poll(); };
+            document.addEventListener("visibilitychange", again);
+            window.addEventListener("online", again);
+            window.addEventListener("focus", again);
+        },
+        /** The worker's beat polls; without a worker (or until it exists) a timer chain does. */
+        startBeat() {
+            try {
+                this.worker = new Worker(URL.createObjectURL(new Blob([BEAT], { type: "text/javascript" })));
+                this.worker.onmessage = () => { if (this.unlocked && !this.polling) this.poll(); };
+            } catch {
+                this.worker = null;  // poll() falls back to its own timer
+            }
         },
         unlock() {
             this.passphrase = this.entry.trim();
@@ -80,9 +105,11 @@ document.addEventListener("alpine:init", () => {
         },
         async poll() {
             clearTimeout(this.timer);
+            this.polling = true;
             try {
                 const response = await fetch(`${base}/control/sessions`, {
                     headers: { "X-TO-Passphrase": this.passphrase },
+                    signal: AbortSignal.timeout(TIMEOUT_MS),
                 });
                 if (response.status === 403) return this.lock("Wrong Telescope Operator passphrase");
                 if (!response.ok) throw new Error(`HTTP ${response.status}`);
@@ -93,9 +120,11 @@ document.addEventListener("alpine:init", () => {
                 this.viewers = view.viewers;
                 this.error = null;
             } catch (e) {
-                this.error = `server: ${e.message || e}`;
+                this.error = e.name === "TimeoutError" ? "server: no answer" : `server: ${e.message || e}`;
+            } finally {
+                this.polling = false;
             }
-            this.timer = setTimeout(() => this.poll(), POLL_MS);
+            if (!this.worker) this.timer = setTimeout(() => this.poll(), POLL_MS);
         },
     }));
 });
