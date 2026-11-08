@@ -1,8 +1,10 @@
 {% extends "base.html" %}
+{% load static %}
 {% block title %}WILDS - Engineering{% endblock %}
 {% block heading %}Engineering{% endblock %}
 {% block sidebar %}{% include "components/sidebar.html" with pages=eng_pages url_name="eng_page" %}{% endblock %}
 {% block dock %}{% include "components/camera_dock.html" %}{% endblock %}
+{% block extra_js %}<script src="{% static 'wilds/js/config.js' %}?v={{ asset_version }}" defer></script>{% endblock %}
 {% block content %}
 {% comment %} Engineering mode (plan §3.11): the passphrase is checked by wilds-control, which gives this
    session the lease in engineering mode. No TO involvement; coordination is by Zoom or in person.
@@ -72,22 +74,11 @@
             <div class="card-header"><i class="bi bi-sliders me-2"></i>Configuration</div>
             <div class="card-body">
                 <p class="text-body-secondary small">
-                    One panel per component, with the settings the server applies to the hardware (plan §3.10).
+                    Each component's settings, as the server applies them to the hardware (plan §3.10). Edits are saved under your name and kept in a history.
                     Deployment settings (broker host, device addresses, data paths) live in
                     <code>config.toml</code> and are not edited here.
                 </p>
-                <div class="d-flex flex-wrap gap-2">
-                    {% include "components/action_button.html" with action="cfg_guide_camera" label="Guide camera" style="outline-primary" %}
-                    {% include "components/action_button.html" with action="cfg_science_cameras" label="Science cameras" style="outline-primary" %}
-                    {% include "components/action_button.html" with action="cfg_stages" label="Stages" style="outline-primary" %}
-                    {% include "components/action_button.html" with action="cfg_slit" label="Slit" style="outline-primary" %}
-                    {% include "components/action_button.html" with action="cfg_adc" label="ADC" style="outline-primary" %}
-                    {% include "components/action_button.html" with action="cfg_lamps" label="Calibration lamps" style="outline-primary" %}
-                    {% include "components/action_button.html" with action="cfg_autofocus" label="Autofocus" style="outline-primary" %}
-                    {% include "components/action_button.html" with action="cfg_acquisition" label="Acquisition" style="outline-primary" %}
-                    {% include "components/action_button.html" with action="cfg_telescope" label="Telescope interface" style="outline-primary" %}
-                    {% include "components/action_button.html" with action="cfg_storage" label="Data storage" style="outline-primary" %}
-                </div>
+                {% include "components/settings_form.html" %}
             </div>
         </div>
         {% endif %}
