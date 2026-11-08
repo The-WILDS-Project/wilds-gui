@@ -137,7 +137,9 @@ document.addEventListener("alpine:init", () => {
         async checkElsewhere() {
             if (!this.component || !this.loaded) return;
             const seen = Alpine.store("wilds").conf_versions?.[`${this.component}/${this.slice}`];
-            if (seen === undefined || seen === this.loaded.version || this.stale) return;
+            // Versions only grow, and the status stream lags a second behind a save made here,
+            // so an older or equal number is just that lag, never a change elsewhere.
+            if (seen === undefined || seen <= this.loaded.version || this.stale) return;
             this.stale = true;
             try {
                 const [last] = await api("GET", `${this.path}/history?limit=1`);
