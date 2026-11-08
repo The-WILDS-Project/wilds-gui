@@ -4,10 +4,17 @@
  * a bar across them. Ended pills and bars tint by outcome, then collapse.
  */
 .board {
+    /* A fixed height, so the page below does not jump as pills come and go: the component row
+       and four stacked pills or bars (about 2.1 rem each). Beyond that the board scrolls. */
+    --board-height: 10.5rem;
     display: grid;
     grid-template-columns: repeat(var(--cols), minmax(0, 1fr));
     column-gap: 0.5rem;
     align-items: start;
+    align-content: start;        /* rows keep their own height; the spare room stays empty */
+    height: var(--board-height);
+    overflow-y: auto;
+    overflow-x: hidden;
 }
 
 .board-comp {
