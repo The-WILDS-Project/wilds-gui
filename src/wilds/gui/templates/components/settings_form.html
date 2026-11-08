@@ -84,7 +84,7 @@ from the schema wilds-control serves, saved as the changed fields plus the versi
                         <span class="text-body-secondary small" x-show="f.unit && isSet(f)" x-text="f.unit"></span>
                         <span class="text-body-secondary small" x-show="f.nullable && !isSet(f) && f.kind !== 'choice'">not set</span>
                         <button type="button" class="btn btn-link btn-sm p-0" x-show="changed(f.key)" @click="revert(f)"
-                                title="Undo this edit"><i class="bi bi-arrow-counterclockwise"></i></button>
+                                x-tooltip="'Undo this edit'" aria-label="Undo this edit"><i class="bi bi-arrow-counterclockwise"></i></button>
                     </div>
                     <div class="text-danger small" x-show="issue(f)" x-text="issue(f)"></div>
                 </div>
