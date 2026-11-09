@@ -5,13 +5,14 @@ from the schema wilds-control serves, saved as the changed fields plus the versi
 <div x-data="settingsForm()">
     <p class="text-body-secondary" x-show="names.length === 0 && !error">No component has settings yet.</p>
 
-    <div class="d-flex flex-wrap gap-2 mb-3" x-show="names.length > 0">
+    <ul class="nav nav-tabs mb-3" role="tablist" x-show="names.length > 0">
         <template x-for="name in names" :key="name">
-            <button type="button" class="btn btn-sm"
-                    :class="name === component ? 'btn-primary' : 'btn-outline-primary'"
-                    @click="select(name, slice)" x-text="pretty(name)"></button>
+            <li class="nav-item" role="presentation">
+                <button type="button" class="nav-link" role="tab" :class="name === component ? 'active' : ''"
+                        :aria-selected="name === component" @click="select(name, slice)" x-text="pretty(name)"></button>
+            </li>
         </template>
-    </div>
+    </ul>
 
     <div class="alert alert-danger py-2" role="alert" x-show="error">
         <i class="bi bi-exclamation-octagon me-2"></i><span x-text="error"></span>
