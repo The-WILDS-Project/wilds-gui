@@ -407,3 +407,8 @@ def test_x_show_beats_bootstrap_display_utilities() -> None:
     (the settings form's 'changed elsewhere' banner was always shown)."""
     css = Path(finders.find("wilds/css/main.css")).read_text()
     assert '[x-show][style*="display: none"] { display: none !important; }' in css
+
+
+def test_the_configuration_panel_chooses_components_with_tabs(client: Client) -> None:
+    cfg = client.get("/eng/configuration/").content.decode()
+    assert 'class="nav nav-tabs' in cfg and 'role="tab"' in cfg
