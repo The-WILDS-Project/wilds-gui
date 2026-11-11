@@ -38,7 +38,18 @@ the dock as a thumbnail. Logic and the video socket: static/wilds/js/camera.js.
             </span>
         </div>
 
-        <div class="dock-frame" :style="`aspect-ratio: ${$store.camera.aspect}`">
+        <div class="dock-viewbar small" x-show="$store.camera.view">
+            <span class="text-truncate" x-text="$store.camera.view?.title"></span>
+            <button type="button" class="btn btn-sm btn-outline-secondary ms-auto" @click="$store.camera.live()">
+                <i class="bi bi-camera-video me-1"></i>Live</button>
+        </div>
+        <div class="dock-view" x-show="$store.camera.view">
+            <template x-if="$store.camera.view">
+                <iframe :src="$store.camera.view.src" title="Stored frame" referrerpolicy="same-origin"></iframe>
+            </template>
+        </div>
+
+        <div class="dock-frame" x-show="!$store.camera.view" :style="`aspect-ratio: ${$store.camera.aspect}`">
             <img x-show="$store.camera.url" :src="$store.camera.url" alt="Guide camera frame">
             <div class="dock-empty text-body-secondary small" x-show="!$store.camera.url">
                 <span x-text="$store.camera.link === 'live' ? 'No frame yet: start the camera' : $store.camera.headline"></span>
@@ -53,7 +64,7 @@ the dock as a thumbnail. Logic and the video socket: static/wilds/js/camera.js.
             </div>
         </div>
 
-        <div class="dock-controls" x-show="$store.camera.shown === 'dock'"
+        <div class="dock-controls" x-show="$store.camera.shown === 'dock' && !$store.camera.view"
              x-data="{ exposure: '', gain: '', setpoint: '', editing: '',
                        sync() {
                            const s = $store.wilds.guide_camera;
@@ -71,6 +82,11 @@ the dock as a thumbnail. Logic and the video socket: static/wilds/js/camera.js.
                     <button type="button" class="btn btn-sm btn-outline-primary" x-show="$store.camera.streaming"
                             :disabled="!$store.jobs.canControl || $store.camera.busy"
                             @click="$store.camera.stop()"><i class="bi bi-stop-fill me-1"></i>Stop</button>
+                    <a class="btn btn-sm btn-outline-secondary" target="_blank" rel="noopener"
+                       x-show="$store.wilds.guide_camera?.last_frame_id != null"
+                       x-tooltip="'Open the latest frame in the JS9 viewer'"
+                       :href="'/viewer/?path=' + encodeURIComponent('/guide-camera/frames/' + $store.wilds.guide_camera.last_frame_id) + '&title=' + encodeURIComponent('Guide frame ' + $store.wilds.guide_camera.last_frame_id)"
+                       aria-label="Open the latest frame in the JS9 viewer"><i class="bi bi-eye"></i></a>
                 </div>
                 <div class="row g-2 align-items-center">
                     <label class="col-4 col-form-label-sm" for="cam-exposure">Exposure (s)</label>

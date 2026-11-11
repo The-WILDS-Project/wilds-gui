@@ -7,6 +7,11 @@
  * The camera's settings, cooler and streaming flag come from the status stream ("wilds" store,
  * guide_camera), not from here. Commands (start/stop, exposure, gain, cooler) need the lease.
  *
+ * The dock also shows stored frames in place of the live video: while a dark or bias run is
+ * going (each frame as it is taken, then the master), and when a stored image is opened from
+ * the Calibration page. They are the JS9 viewer page (/viewer/?embed=1) in a frame inside the dock;
+ * starting the video, or the Live button, brings the video back.
+ *
  * The socket is open only while the dock is shown (a hidden dock costs the server nothing),
  * and reconnects with backoff. All text goes in with x-text; the image is a blob: URL.
  */
@@ -33,6 +38,7 @@ document.addEventListener("alpine:init", () => {
         url: null,            // blob: URL of that frame
         fps: null,
         busy: false,          // a command is in flight
+        view: null,           // a stored frame shown instead of the video: {title, src}, or null
 
         /** What is drawn: a narrow window cannot hold the full dock. */
         get shown() { return this.narrow && this.size === "dock" ? "thumb" : this.size; },
@@ -44,6 +50,7 @@ document.addEventListener("alpine:init", () => {
             return "unknown";
         },
         get headline() {
+            if (this.view) return "Stored frame";
             if (this.link === "lost") return "Video link lost, retrying";
             if (this.link === "connecting") return "Connecting";
             if (!this.status) return "No camera status";
@@ -71,6 +78,21 @@ document.addEventListener("alpine:init", () => {
             const power = c.power_pct === null ? "" : ` · ${Math.round(c.power_pct)} %`;
             return `${c.state === "stable" ? "at" : "cooling to"}${target}${power}`;
         },
+
+        /** Show a file on wilds-control (a path) in the dock's viewer instead of the video.
+         *  ``open`` brings the dock up even if it is hidden or small (a click asked for it). */
+        show(path, title, { open = false } = {}) {
+            if (!path || !path.startsWith("/") || path.startsWith("//")) return;
+            // The viewer sizes JS9 to the frame it is shown in; a frame that is hidden at the
+            // moment it loads measures nothing, so the dock says how big it will be.
+            const box = document.querySelector(".dock-view");
+            const w = (box && box.clientWidth) || 516;
+            const h = (box && box.clientHeight) || 480;
+            const src = `/viewer/?embed=1&w=${w}&h=${h}&path=${encodeURIComponent(path)}&title=${encodeURIComponent(title || "")}`;
+            if (this.view?.src !== src) this.view = { title: title || path, src, path };
+            if (open && this.size !== "dock") this.setSize("dock");
+        },
+        live() { this.view = null; },
 
         setSize(size) {
             if (!SIZES.includes(size)) return;
@@ -102,6 +124,34 @@ document.addEventListener("alpine:init", () => {
     });
     const store = Alpine.store("camera");
     NARROW.addEventListener("change", (e) => { store.narrow = e.matches; });
+
+    // -- stored frames in the dock -------------------------------------------------------
+
+    const CALIBRATION = ["guide-camera-dark", "guide-camera-bias"];
+    let following = null;     // the calibration job being shown, by id
+    let shownFrame = null;    // the newest calibration frame already shown
+    Alpine.effect(() => {
+        const w = Alpine.store("wilds");
+        const jobs = w.jobs || [];
+        const frameId = w.guide_camera?.last_calibration_frame_id ?? null;
+        const streaming = !!w.guide_camera?.streaming;
+        const running = jobs.find((j) => CALIBRATION.includes(j.kind) && (j.state === "running" || j.state === "queued"));
+        if (streaming && store.view) { store.live(); return; }  // starting the video wins
+        if (running) {
+            if (following !== running.id) { following = running.id; shownFrame = frameId; }  // an older run's frame is not news
+            if (frameId !== null && frameId !== shownFrame && store.size !== "off") {
+                shownFrame = frameId;
+                store.show(`/guide-camera/frames/${frameId}`, `${running.kind.replace("guide-camera-", "")} frame #${frameId}`);
+            }
+        } else if (following) {
+            const ended = jobs.find((j) => j.id === following);
+            following = null;
+            const r = ended?.state === "done" ? ended.result : null;
+            if (r?.master && store.size !== "off") {
+                store.show(`/guide-camera/calibration/sessions/${r.session}/entries/${r.entry}/${r.master}`, `${r.entry} master`);
+            }
+        }
+    });
 
     // -- the video socket ----------------------------------------------------------------
 
