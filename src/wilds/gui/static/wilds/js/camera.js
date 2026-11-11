@@ -38,6 +38,9 @@ document.addEventListener("alpine:init", () => {
         narrow: NARROW.matches,
         width: Number(read(WIDTH_KEY)) || 540,  // px, the full dock; set by the splitter
         dragging: false,
+        zoom: 1,              // the live view's magnification (1 = the whole frame)
+        cx: 0.5,              // the point of the frame in the middle of the dock, as fractions
+        cy: 0.5,
         link: "off",          // off | connecting | live | lost
         meta: null,           // the metadata of the frame on screen
         url: null,            // blob: URL of that frame
@@ -98,6 +101,65 @@ document.addEventListener("alpine:init", () => {
             if (open && this.size !== "dock") this.setSize("dock");
         },
         live() { this.view = null; },
+
+        // -- zooming the live view (the frame is scaled and moved inside the dock) -----------------
+        /** The transform that shows magnification ``zoom`` around (cx, cy), kept inside the frame. */
+        get xf() {
+            const z = this.zoom, clamp = (t) => Math.min(0, Math.max(1 - z, t));
+            return { z, tx: clamp(0.5 - z * this.cx), ty: clamp(0.5 - z * this.cy) };
+        },
+        get zoomStyle() {
+            const { z, tx, ty } = this.xf;
+            return this.shown === "dock" && z > 1 ? `transform: translate(${tx * 100}%, ${ty * 100}%) scale(${z})` : "";
+        },
+        /** Set the magnification, keeping the point under (sx, sy) (fractions of the dock frame) fixed. */
+        setZoom(z2, sx = 0.5, sy = 0.5) {
+            const { z, tx, ty } = this.xf;
+            z2 = Math.min(16, Math.max(1, z2));
+            const px = (sx - tx) / z, py = (sy - ty) / z;  // the frame point under the cursor
+            this.zoom = z2;
+            this.cx = (z2 * px + 0.5 - sx) / z2;
+            this.cy = (z2 * py + 0.5 - sy) / z2;
+            const n = this.xf;  // after the clamp, so the centre is where the frame really is
+            this.cx = (0.5 - n.tx) / z2;
+            this.cy = (0.5 - n.ty) / z2;
+        },
+        zoomBy(k) { this.setZoom(this.zoom * k); },
+        zoomReset() { this.zoom = 1; this.cx = this.cy = 0.5; },
+        /** Magnify around the slit, so that it fills a good part of the view. */
+        zoomToSlit() {
+            const g = Alpine.store("slit")?.geo;
+            if (!g) return;
+            this.zoom = 1;
+            this.setZoom(Math.min(12, Math.max(2, (0.6 * g.h) / g.len)));
+            this.cx = g.cx / g.w; this.cy = g.cy / g.h;
+            this.setZoom(this.zoom);  // clamp
+        },
+        wheel(evt) {
+            if (this.shown !== "dock") return;
+            const r = evt.currentTarget.getBoundingClientRect();
+            this.setZoom(this.zoom * (evt.deltaY < 0 ? 1.25 : 0.8), (evt.clientX - r.left) / r.width, (evt.clientY - r.top) / r.height);
+        },
+        /** Drag the magnified frame (not on the slit's handle, nor while picking a star). */
+        startPan(evt) {
+            if (this.zoom <= 1 || evt.button !== 0 || Alpine.store("slit")?.pick || evt.target.closest?.(".slit-handle")) return;
+            const el = evt.currentTarget, r = el.getBoundingClientRect(), x0 = evt.clientX, y0 = evt.clientY, c0 = [this.cx, this.cy];
+            el.setPointerCapture(evt.pointerId);
+            const move = (e) => {
+                this.cx = c0[0] - (e.clientX - x0) / r.width / this.zoom;
+                this.cy = c0[1] - (e.clientY - y0) / r.height / this.zoom;
+                const n = this.xf;
+                this.cx = (0.5 - n.tx) / this.zoom; this.cy = (0.5 - n.ty) / this.zoom;
+            };
+            const end = () => {
+                el.removeEventListener("pointermove", move);
+                el.removeEventListener("pointerup", end);
+                el.removeEventListener("pointercancel", end);
+            };
+            el.addEventListener("pointermove", move);
+            el.addEventListener("pointerup", end);
+            el.addEventListener("pointercancel", end);
+        },
 
         /** The splitter between the page and the dock: the dock's width, kept in this browser. */
         setWidth(w, { save = true } = {}) {

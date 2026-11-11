@@ -8,6 +8,8 @@
 
 body {
     min-height: 100vh;
+    display: flex;
+    flex-direction: column;     /* header, the main row, and an optional full-width bottom pane */
 }
 
 /* Header (MAST: 80 px, logos left and right) */
@@ -38,7 +40,44 @@ body {
 .ui-header .container-fluid > .flex-grow-1 > * { white-space: nowrap; }
 
 .ui-main {
-    min-height: calc(100vh - 80px);
+    flex: 1 1 auto;             /* fills what the header and a bottom pane leave */
+    min-height: 0;
+}
+
+/* A pane across the whole window under the sidebar, the page and the dock (the Activity board on the
+   Instrument Operator pages). */
+.ui-bottom {
+    flex: 0 0 auto;
+    padding: 0.75rem 1rem;
+    border-top: 1px solid var(--ui-border);
+    background: var(--ui-sidebar-bg);
+}
+
+/* The operations tabs: a pane about as tall as the guide-camera dock beside it, scrolling inside. */
+.ops-pane {
+    overflow-y: scroll;         /* always there, so it is plain that the pane scrolls */
+    border: 1px solid var(--ui-border);
+    border-radius: 0.375rem;
+    padding: 0 0.75rem 0.75rem;
+    margin-bottom: 1rem;
+}
+/* A classic, always-visible scrollbar: macOS hides its overlay ones until you scroll. A custom
+   ::-webkit-scrollbar switches that off, and the track and thumb take the theme's colours. */
+.ops-pane::-webkit-scrollbar { width: 14px; }
+.ops-pane::-webkit-scrollbar-track { background: var(--ui-sidebar-bg); border-left: 1px solid var(--ui-border); }
+.ops-pane::-webkit-scrollbar-thumb {
+    background: var(--bs-secondary-color);
+    border: 3px solid var(--ui-sidebar-bg);
+    border-radius: 8px;
+    min-height: 2.5rem;
+}
+.ops-pane::-webkit-scrollbar-thumb:hover { background: var(--bs-body-color); }
+.ops-pane > .nav-tabs {
+    position: sticky;
+    top: 0;
+    z-index: 5;
+    background: var(--bs-body-bg);
+    padding-top: 0.5rem;
 }
 
 /* Logos drawn for a light background get a light plate in the dark theme. */

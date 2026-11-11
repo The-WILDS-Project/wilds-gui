@@ -1,9 +1,19 @@
 {% extends "base.html" %}
+{% load static %}
 {% block title %}WILDS - Instrument Operator{% endblock %}
 {% block heading %}Instrument<br>Operator{% endblock %}
 {% block control %}{% include "components/control_status.html" %}{% endblock %}
 {% block sidebar %}{% include "components/sidebar.html" with pages=io_pages url_name="io_page" %}{% endblock %}
 {% block dock %}{% include "components/camera_dock.html" %}{% endblock %}
+{% block extra_js %}{% if page == "operations" %}<script src="{% static 'wilds/js/acquisition.js' %}?v={{ asset_version }}" defer></script>{% endif %}{% endblock %}
+{% block bottom %}
+<div class="ui-bottom">
+    <div class="card">
+        <div class="card-header"><i class="bi bi-activity me-2"></i>Activity</div>
+        <div class="card-body">{% include "components/activity_board.html" %}</div>
+    </div>
+</div>
+{% endblock %}
 {% block content %}
 <div x-data x-show="$store.wilds.to.online === false" class="alert alert-warning py-2" role="status">
     <i class="bi bi-person-x me-2"></i>The Telescope Operator is offline. A control request waits
@@ -25,51 +35,286 @@
     </div>
 </div>
 
-<div class="card mb-3">
-    <div class="card-header"><i class="bi bi-activity me-2"></i>Activity</div>
-    <div class="card-body">{% include "components/activity_board.html" %}</div>
-</div>
-
 {% if page == "operations" %}
-<div class="card mb-3" x-data x-show="$store.wilds.opmode === 'development'">
-    <div class="card-header">
-        <i class="bi bi-bug me-2"></i>Test job
-        <span class="badge ui-warning ms-2">development</span>
-    </div>
-    <div class="card-body d-flex flex-wrap align-items-center gap-2" x-data="{ queue: false }">
-        <span x-tooltip="$store.jobs.canControl ? '' : 'Request control first: only the holder can start jobs'">
-            <button type="button" class="btn btn-outline-primary" :disabled="!$store.jobs.canControl"
-                    @click="$store.jobs.startDemo('done', queue)">Run "testing 1 2 3"</button>
-        </span>
-        <span x-tooltip="$store.jobs.canControl ? '' : 'Request control first: only the holder can start jobs'">
-            <button type="button" class="btn btn-outline-danger" :disabled="!$store.jobs.canControl"
-                    @click="$store.jobs.startDemo('fail', queue)">Run one that fails</button>
-        </span>
-        <div class="form-check ms-2">
-            <input class="form-check-input" type="checkbox" id="demo-queue" x-model="queue">
-            <label class="form-check-label small" for="demo-queue">wait if busy</label>
-        </div>
-        <span class="small text-body-secondary">About 12 s across the slit, ADC and guide camera.</span>
-    </div>
-</div>
+{% comment %} The operations the instrument operator can perform, one tab each; the tab is remembered per
+   browser. Test is a development helper (its tab is hidden in production). Focus and Acquisition
+   fill in as wilds-control gets the telescope (plan §3.3, §3.4, §3.12). {% endcomment %}
+<div class="ops-pane" x-effect="$store.slit.active = shown === 'acquisition'" :style="`height: ${paneHeight}px`"
+     x-data="{ paneHeight: 640,
+               init() {
+                   // As tall as the guide-camera dock beside it (but never too short to work in).
+                   const dock = document.querySelector('.camera-dock');
+                   if (!dock || !window.ResizeObserver) return;
+                   new ResizeObserver(() => { this.paneHeight = Math.max(480, Math.round(dock.getBoundingClientRect().height) - 16); }).observe(dock);
+               },
+               tab: (() => { try { return localStorage.getItem('wilds-ops-tab') || 'acquisition'; } catch { return 'acquisition'; } })(),
+               get tabs() {
+                   const t = [['acquisition', 'Acquisition'], ['focus', 'Focus'], ['guiding', 'Guiding']];
+                   if ($store.wilds.opmode === 'development') t.push(['test', 'Test']);
+                   return t;
+               },
+               get shown() { return this.tabs.some((t) => t[0] === this.tab) ? this.tab : 'acquisition'; },
+               pick(t) { this.tab = t; try { localStorage.setItem('wilds-ops-tab', t); } catch { /* private mode */ } } }">
+    <ul class="nav nav-tabs flex-nowrap overflow-x-auto mb-3" role="tablist">
+        <template x-for="t in tabs" :key="t[0]">
+            <li class="nav-item" role="presentation">
+                <button type="button" class="nav-link" role="tab" :class="t[0] === shown ? 'active' : ''" :aria-selected="t[0] === shown"
+                        @click="pick(t[0])" style="white-space: nowrap;" x-text="t[1]"></button>
+            </li>
+        </template>
+    </ul>
 
-<div class="card mb-3">
-    <div class="card-header"><i class="bi bi-crosshair me-2"></i>Target</div>
-    <div class="card-body">
-        <div class="row mb-2 align-items-center">
-            <label class="col-4 fw-bold text-end" for="target-name">Name</label>
-            <div class="col-8"><input id="target-name" class="form-control" placeholder="e.g. HD 12345"></div>
+    <div x-show="shown === 'acquisition'">
+        <div class="card mb-3" x-data="acquisitionTarget()">
+            <div class="card-header d-flex align-items-center gap-2">
+                <i class="bi bi-crosshair"></i>Target
+                <span class="ms-auto small text-body-secondary" x-text="nowText"></span>
+            </div>
+            <div class="card-body">
+                <div class="row mb-2 align-items-center">
+                    <label class="col-3 fw-bold text-end" for="target-ra">RA (J2000)</label>
+                    <div class="col-4"><input id="target-ra" class="form-control" placeholder="hh:mm:ss or hours" x-model="ra" autocomplete="off"></div>
+                    <label class="col-auto fw-bold text-end" for="target-dec">Dec</label>
+                    <div class="col"><input id="target-dec" class="form-control" placeholder="±dd:mm:ss or degrees" x-model="dec" autocomplete="off"></div>
+                </div>
+                <div class="row mb-2" x-show="coordinatesText">
+                    <div class="col-3"></div>
+                    <div class="col-9 small">
+                        <span x-text="coordinatesText"></span>
+                        <span class="text-body-secondary" x-show="matchText" x-text="'· ' + matchText"></span>
+                    </div>
+                </div>
+                <div class="row mb-2 align-items-center">
+                    <label class="col-3 fw-bold text-end" for="target-name">Name</label>
+                    <div class="col-9">
+                        <div class="input-group">
+                            <input id="target-name" class="form-control" placeholder="optional, e.g. HD 12345 or M31" x-model="name" autocomplete="off"
+                                   @keydown.enter.prevent="resolve()">
+                            <button type="button" class="btn btn-outline-secondary" :disabled="resolving || !name.trim()" @click="resolve()"
+                                    x-tooltip="'Look the name up and fill in the coordinates'">
+                                <span x-text="resolving ? 'Resolving…' : 'Resolve'"></span></button>
+                        </div>
+                        <div class="form-text" x-show="nameHint" x-text="nameHint"></div>
+                    </div>
+                </div>
+                <div class="row mb-3 align-items-center">
+                    <label class="col-3 fw-bold text-end" for="target-pa">Slit PA</label>
+                    <div class="col-3">
+                        <div class="input-group">
+                            <input id="target-pa" type="number" step="any" class="form-control" x-model="pa">
+                            <span class="input-group-text">°</span>
+                        </div>
+                    </div>
+                    <div class="col-6 small text-body-secondary">sky position angle, East of North</div>
+                </div>
+
+                <div class="row mb-2 align-items-center">
+                    <div class="col-3"></div>
+                    <div class="col-9 d-flex flex-wrap align-items-center gap-2">
+                        <span :class="whyNot ? 'ui-unavailable' : ''" x-tooltip="whyNot">
+                            <button type="button" class="btn btn-primary" :disabled="!!whyNot || sending" @click="slew()">
+                                <i class="bi bi-send me-1"></i><span x-text="label"></span></button>
+                        </span>
+                        <span class="small text-body-secondary" x-text="$store.wilds.previewText"></span>
+                    </div>
+                </div>
+
+                <div class="row mb-2" x-show="job">
+                    <div class="col-3"></div>
+                    <div class="col-9 d-flex align-items-center gap-2">
+                        <div class="progress flex-grow-1" style="max-width: 18rem; height: 1.2rem;">
+                            <div class="progress-bar" role="progressbar" :style="'width: ' + percent + '%'"></div>
+                        </div>
+                        <span class="small" x-text="job?.progress?.message"></span>
+                        <button type="button" class="btn btn-sm btn-outline-secondary" x-show="$store.jobs.showCancel"
+                                :disabled="!$store.jobs.canControl" @click="cancel()">Cancel</button>
+                    </div>
+                </div>
+                <div class="row" x-show="outcome">
+                    <div class="col-3"></div>
+                    <div class="col-9"><span class="badge" :class="outcome?.cls" x-text="outcome?.text"></span></div>
+                </div>
+                <div class="alert alert-danger py-2 mt-2 mb-0" role="alert" x-show="error">
+                    <i class="bi bi-exclamation-octagon me-2"></i><span x-text="error"></span>
+                </div>
+            </div>
         </div>
-        <div class="row mb-2 align-items-center">
-            <div class="col-4"></div>
-            <div class="col-8 d-flex align-items-center gap-2" x-data>
-                {% include "components/action_button.html" with action="slew" label="Send to TO preview" %}
-                <span class="small text-body-secondary" x-text="$store.wilds.previewText"></span>
+
+        <div class="card mb-3" x-data="acquisitionOffsets()">
+            <div class="card-header"><i class="bi bi-arrows-move me-2"></i>Adjust offsets</div>
+            <div class="card-body">
+                <p class="small text-body-secondary mb-2">
+                    Moves the telescope's pointing (the Handset offset), by arrows or by picking a star on the live
+                    view to put on the slit. Nothing is sent until <em>Apply</em>.
+                </p>
+                <div class="row mb-2 align-items-center">
+                    <div class="col-3 fw-bold text-end">Now</div>
+                    <div class="col-9"><code x-text="text(current)"></code></div>
+                </div>
+                <div class="row mb-2 align-items-center" x-show="pending">
+                    <div class="col-3 fw-bold text-end">Will be</div>
+                    <div class="col-9"><code x-text="pending ? text(pending) : ''"></code></div>
+                </div>
+                <div class="row mb-2 align-items-center">
+                    <div class="col-3 fw-bold text-end">Step</div>
+                    <div class="col-9 d-flex align-items-center gap-3 flex-wrap">
+                        <select class="form-select form-select-sm w-auto" x-model.number="step" aria-label="Step in arcsec">
+                            <template x-for="v in steps" :key="v"><option :value="v" x-text="v + '″'"></option></template>
+                        </select>
+                        <div class="d-grid gap-1" style="grid-template-columns: repeat(3, 2.6rem); grid-template-rows: repeat(3, 2rem);" role="group" aria-label="Move the telescope">
+                            <span></span>
+                            <button type="button" class="btn btn-sm btn-outline-secondary p-0" @click="nudge(0, 1)" x-tooltip="'Pointing north'">N</button>
+                            <span></span>
+                            <button type="button" class="btn btn-sm btn-outline-secondary p-0" @click="nudge(-1, 0)" x-tooltip="'Pointing west'">W</button>
+                            <span class="text-center text-body-secondary small align-self-center">sky</span>
+                            <button type="button" class="btn btn-sm btn-outline-secondary p-0" @click="nudge(1, 0)" x-tooltip="'Pointing east'">E</button>
+                            <span></span>
+                            <button type="button" class="btn btn-sm btn-outline-secondary p-0" @click="nudge(0, -1)" x-tooltip="'Pointing south'">S</button>
+                            <span></span>
+                        </div>
+                        <span :class="whyPick ? 'ui-unavailable' : ''" x-tooltip="whyPick">
+                            <button type="button" class="btn btn-sm" :class="$store.slit.pick ? 'btn-warning' : 'btn-outline-secondary'" :disabled="!!whyPick" @click="togglePick()">
+                                <i class="bi bi-bullseye me-1"></i><span x-text="$store.slit.pick ? 'Click a star…' : 'Pick a star on the view'"></span></button>
+                        </span>
+                    </div>
+                </div>
+                <div class="row mb-2 align-items-center">
+                    <div class="col-3"></div>
+                    <div class="col-9 d-flex flex-wrap gap-2">
+                        <span :class="whyNotApply ? 'ui-unavailable' : ''" x-tooltip="whyNotApply">
+                            <button type="button" class="btn btn-primary" :disabled="!!whyNotApply || sending" @click="apply()">Apply</button></span>
+                        <button type="button" class="btn btn-outline-secondary" :disabled="!pending && !$store.slit.pickMark" @click="reset()">Reset</button>
+                        <span :class="whyNot ? 'ui-unavailable' : ''" x-tooltip="whyNot">
+                            <button type="button" class="btn btn-outline-secondary" :disabled="!!whyNot || sending" @click="clear()">Clear offset</button></span>
+                        <span :class="whyNot ? 'ui-unavailable' : ''" x-tooltip="whyNot">
+                            <button type="button" class="btn btn-outline-secondary" :disabled="!!whyNot || sending" @click="absorb()">Absorb</button></span>
+                    </div>
+                </div>
+                <div class="row mb-2" x-show="job">
+                    <div class="col-3"></div>
+                    <div class="col-9 d-flex align-items-center gap-2">
+                        <div class="progress flex-grow-1" style="max-width: 18rem; height: 1.2rem;">
+                            <div class="progress-bar" role="progressbar" :style="'width: ' + percent + '%'"></div></div>
+                        <span class="small" x-text="job?.progress?.message"></span>
+                        <button type="button" class="btn btn-sm btn-outline-secondary" x-show="$store.jobs.showCancel" :disabled="!$store.jobs.canControl" @click="cancel()">Cancel</button>
+                    </div>
+                </div>
+                <div class="row" x-show="outcome"><div class="col-3"></div>
+                    <div class="col-9"><span class="badge" :class="outcome?.cls" x-text="outcome?.text"></span></div></div>
+                <div class="alert alert-danger py-2 mt-2 mb-0" role="alert" x-show="error">
+                    <i class="bi bi-exclamation-octagon me-2"></i><span x-text="error"></span></div>
+            </div>
+        </div>
+
+        <div class="card mb-3" x-data="acquisitionRotation()">
+            <div class="card-header"><i class="bi bi-arrow-repeat me-2"></i>Adjust rotation</div>
+            <div class="card-body">
+                <p class="small text-body-secondary mb-2">
+                    Turns the slit (the rotator) to a sky position angle, East of North. Drag the handle at the end of the
+                    slit on the live view, or type an angle; nothing is sent until <em>Send</em>. It needs a target.
+                </p>
+                <div class="row mb-2 align-items-center">
+                    <div class="col-3 fw-bold text-end">Slit PA now</div>
+                    <div class="col-9"><code x-text="currentText"></code></div>
+                </div>
+                <div class="row mb-2 align-items-center">
+                    <label class="col-3 fw-bold text-end" for="rot-pa">New PA</label>
+                    <div class="col-3">
+                        <div class="input-group">
+                            <input id="rot-pa" type="number" step="any" class="form-control" :value="pending ?? ''" @input="setPa($event.target.value)">
+                            <span class="input-group-text">°</span>
+                        </div>
+                    </div>
+                    <div class="col-6 d-flex gap-2">
+                        <span :class="whyNot ? 'ui-unavailable' : ''" x-tooltip="whyNot">
+                            <button type="button" class="btn btn-primary" :disabled="!!whyNot || sending" @click="send()">
+                                <i class="bi bi-send me-1"></i>Send</button></span>
+                        <button type="button" class="btn btn-outline-secondary" :disabled="pending === null" @click="reset()">Reset</button>
+                    </div>
+                </div>
+                <div class="row mb-2" x-show="job">
+                    <div class="col-3"></div>
+                    <div class="col-9 d-flex align-items-center gap-2">
+                        <div class="progress flex-grow-1" style="max-width: 18rem; height: 1.2rem;">
+                            <div class="progress-bar" role="progressbar" :style="'width: ' + percent + '%'"></div></div>
+                        <span class="small" x-text="job?.progress?.message"></span>
+                        <button type="button" class="btn btn-sm btn-outline-secondary" x-show="$store.jobs.showCancel" :disabled="!$store.jobs.canControl" @click="cancel()">Cancel</button>
+                    </div>
+                </div>
+                <div class="row" x-show="outcome"><div class="col-3"></div>
+                    <div class="col-9"><span class="badge" :class="outcome?.cls" x-text="outcome?.text"></span></div></div>
+                <div class="alert alert-danger py-2 mt-2 mb-0" role="alert" x-show="error">
+                    <i class="bi bi-exclamation-octagon me-2"></i><span x-text="error"></span></div>
+            </div>
+        </div>
+
+        <div class="card mb-3">
+            <div class="card-header"><i class="bi bi-camera me-2"></i>Acquire</div>
+            <div class="card-body">
+                {% comment %} The science-camera series: the controls are here, greyed until wilds-control can take it. {% endcomment %}
+                <p class="small text-body-secondary mb-2">A series of exposures with the science cameras.</p>
+                <div class="row mb-2 align-items-center">
+                    <label class="col-3 fw-bold text-end" for="acq-exposure">Exposure</label>
+                    <div class="col-3">
+                        <div class="input-group">
+                            <input id="acq-exposure" type="number" min="0" step="any" class="form-control" value="60" disabled>
+                            <span class="input-group-text">s</span>
+                        </div>
+                    </div>
+                    <label class="col-3 fw-bold text-end" for="acq-count">Exposures</label>
+                    <div class="col-3"><input id="acq-count" type="number" min="1" step="1" class="form-control" value="1" disabled></div>
+                </div>
+                <div class="row">
+                    <div class="col-3"></div>
+                    <div class="col-9 d-flex gap-2">
+                        {% include "components/action_button.html" with action="acquire_start" label="Start acquisition" %}
+                        {% include "components/action_button.html" with action="acquire_stop" label="Stop" style="outline-primary" %}
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div x-show="shown === 'focus'">
+        <p class="text-body-secondary">Focus comes here.</p>
+    </div>
+
+    <div x-show="shown === 'guiding'">
+        {% comment %} Start and stop only for now; both grey out, with the reason, until wilds-control can guide. {% endcomment %}
+        <div class="card mb-3">
+            <div class="card-header"><i class="bi bi-bullseye me-2"></i>Guiding</div>
+            <div class="card-body d-flex flex-wrap gap-2">
+                {% include "components/action_button.html" with action="guiding_start" label="Start guiding" %}
+                {% include "components/action_button.html" with action="guiding_stop" label="Stop guiding" style="outline-primary" %}
+            </div>
+        </div>
+    </div>
+
+    <div x-show="shown === 'test'">
+        <div class="card mb-3">
+            <div class="card-header">
+                <i class="bi bi-bug me-2"></i>Test job
+                <span class="badge ui-warning ms-2">development</span>
+            </div>
+            <div class="card-body d-flex flex-wrap align-items-center gap-2" x-data="{ queue: false }">
+                <span x-tooltip="$store.jobs.canControl ? '' : 'Request control first: only the holder can start jobs'">
+                    <button type="button" class="btn btn-outline-primary" :disabled="!$store.jobs.canControl"
+                            @click="$store.jobs.startDemo('done', queue)">Run "testing 1 2 3"</button>
+                </span>
+                <span x-tooltip="$store.jobs.canControl ? '' : 'Request control first: only the holder can start jobs'">
+                    <button type="button" class="btn btn-outline-danger" :disabled="!$store.jobs.canControl"
+                            @click="$store.jobs.startDemo('fail', queue)">Run one that fails</button>
+                </span>
+                <div class="form-check ms-2">
+                    <input class="form-check-input" type="checkbox" id="demo-queue" x-model="queue">
+                    <label class="form-check-label small" for="demo-queue">wait if busy</label>
+                </div>
+                <span class="small text-body-secondary">About 12 s across the slit, ADC and guide camera.</span>
             </div>
         </div>
     </div>
 </div>
 {% endif %}
 
-<p class="text-body-secondary">The {{ page_label|lower }} panels come here.</p>
+{% if page != "operations" %}<p class="text-body-secondary">The {{ page_label|lower }} panels come here.</p>{% endif %}
 {% endblock %}
