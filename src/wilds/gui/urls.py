@@ -29,6 +29,7 @@ def _aliases() -> list:
 urlpatterns = [
     path("", RedirectView.as_view(url="/io/", permanent=False)),
     path("to/", views.to_page, name="to"),
+    path("viewer/", views.viewer, name="viewer"),
     path("eng/", views.eng_page, name="eng"),
     path("eng/<slug:page>/", views.eng_page, name="eng_page"),
     # Calibration and configuration moved from /io to /eng.

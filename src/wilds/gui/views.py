@@ -1,5 +1,6 @@
 from django.http import Http404, HttpRequest, HttpResponse
 from django.shortcuts import render
+from django.views.decorators.clickjacking import xframe_options_sameorigin
 
 # The /io pages, in sidebar order: (slug, label, Bootstrap icon).
 IO_PAGES = [
@@ -13,6 +14,13 @@ ENG_PAGES = [
     ("calibration", "Calibration", "bi-lightbulb"),
     ("configuration", "Configuration", "bi-sliders"),
 ]
+
+
+@xframe_options_sameorigin  # the guide-camera dock shows it in a frame of its own page
+def viewer(request: HttpRequest) -> HttpResponse:
+    """A FITS image in JS9 (plan §3.17): ``?path=`` is a path on wilds-control, ``&title=`` a name
+    for the tab. The page itself fetches the file from wilds-control; nothing is read here."""
+    return render(request, "viewer/index.html")
 
 
 def to_page(request: HttpRequest) -> HttpResponse:

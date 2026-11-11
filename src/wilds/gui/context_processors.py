@@ -29,6 +29,7 @@ def _asset_version() -> int:
 # The activity board's columns: wilds-control's component names, as they appear in /status.
 BOARD_COMPONENTS = [
     {"key": "guide-camera", "label": "Guide camera"},
+    {"key": "shutter", "label": "Shutter"},
     {"key": "slit", "label": "Slit"},
     {"key": "adc", "label": "ADC"},
     {"key": "lamps", "label": "Lamps"},

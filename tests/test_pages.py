@@ -72,7 +72,16 @@ def test_vendored_libraries_keep_their_licences() -> None:
 
 def test_ui_js_never_inserts_html() -> None:
     """Session names come from anonymous visitors, so no innerHTML / insertAdjacentHTML."""
-    for name in ("ui.js", "status.js", "theme.js", "jobs.js", "camera.js", "config.js"):
+    for name in (
+        "ui.js",
+        "status.js",
+        "theme.js",
+        "jobs.js",
+        "camera.js",
+        "config.js",
+        "guide_calibration.js",
+        "fits_viewer.js",
+    ):
         text = Path(finders.find(f"wilds/js/{name}")).read_text()
         assert "innerHTML" not in text and "insertAdjacentHTML" not in text, name
 
@@ -447,3 +456,97 @@ def test_the_header_content_is_centred_vertically_in_the_bar() -> None:
     css = Path(finders.find("wilds/css/main.css")).read_text()
     header = css[css.index(".ui-header {") : css.index("}", css.index(".ui-header {"))]
     assert "display: flex" in header and "align-items: center" in header
+
+
+def test_js9_is_vendored_with_its_licence_and_files() -> None:
+    js9 = Path(finders.find("vendor/js9-3.9/js9.min.js")).parent
+    for name in (
+        "LICENSE",
+        "js9support.min.js",
+        "js9plugins.min.js",
+        "js9.css",
+        "js9support.css",
+        "astroemw.js",
+        "astroemw.wasm",
+        "js9worker.js",
+    ):
+        assert (js9 / name).is_file(), name
+    assert "MIT" in (js9 / "LICENSE").read_text()
+    assert (js9 / "images" / "gears.png").is_file()
+
+
+def test_the_viewer_page_loads_js9_and_takes_a_path_on_control(client: Client) -> None:
+    page = client.get("/viewer/?path=/guide-camera/frames/1").content.decode()
+    for part in (
+        "vendor/js9-3.9/js9.min.js",
+        "vendor/js9-3.9/js9.css",
+        "JS9Menubar",
+        'class="JS9"',
+        "wilds/js/fits_viewer.js",
+        "data-control-url",
+    ):
+        assert part in page, part
+    script = Path(finders.find("wilds/js/fits_viewer.js")).read_text()
+    assert 'path.startsWith("/")' in script and 'path.startsWith("//")' in script  # only control
+    assert "JS9.Preload" in script and "zscale" in script
+
+
+def test_the_calibration_page_has_the_guide_camera_card(client: Client) -> None:
+    page = client.get("/eng/calibration/").content.decode()
+    assert 'x-data="guideCalibration()"' in page and "wilds/js/guide_calibration.js" in page
+    assert "Take " in page and "Calibration sessions" in page
+    assert "guideCalibration" not in client.get("/eng/monitoring/").content.decode()
+
+
+def test_the_dock_can_open_the_latest_frame_in_the_viewer(client: Client) -> None:
+    dock = client.get("/eng/monitoring/").content.decode()
+    assert "/viewer/?path=" in dock and "last_frame_id" in dock
+
+
+def test_the_activity_board_has_a_shutter_column(client: Client) -> None:
+    assert '"key": "shutter"' in client.get("/eng/monitoring/").content.decode()
+
+
+def test_the_viewer_may_be_framed_by_our_own_pages_only(client: Client) -> None:
+    """The guide-camera dock shows it in a frame; Django's default X-Frame-Options: DENY would
+    leave a broken-page icon there."""
+    assert client.get("/viewer/").headers["X-Frame-Options"] == "SAMEORIGIN"
+    assert client.get("/eng/").headers["X-Frame-Options"] == "DENY"
+
+
+def test_the_dock_shows_stored_frames_in_place_of_the_video(client: Client) -> None:
+    dock = client.get("/eng/monitoring/").content.decode()
+    assert "$store.camera.view" in dock and "Stored frame" in dock and "camera.live()" in dock
+    script = Path(finders.find("wilds/js/camera.js")).read_text()
+    assert "last_calibration_frame_id" in script and "guide-camera-dark" in script
+    assert "/viewer/?embed=1" in script and "&w=" in script
+
+
+def test_the_calibration_page_has_a_tab_per_thing_to_calibrate(client: Client) -> None:
+    page = client.get("/eng/calibration/").content.decode()
+    for label in ("Guide camera", "Lamps", "Slit", "ADC", "Focus", "Science cameras"):
+        assert f"'{label}'" in page, label
+    assert 'role="tab"' in page and "wilds-cal-tab" in page
+    # the science cameras' dark, bias and flat are under their own tab, the guide camera's card under its
+    science = page[page.index("tab === 'science-cameras'") :]
+    for action in ("cal_dark", "cal_bias", "cal_flat"):
+        assert action in science
+    assert 'x-data="guideCalibration()"' in page[: page.index("tab === 'lamps'")]
+
+
+def test_the_streaming_controls_are_not_shown_beside_a_stored_frame(client: Client) -> None:
+    """Start, exposure, gain and the cooler belong to the video; a stored frame replaces them."""
+    dock = client.get("/eng/monitoring/").content.decode()
+    controls = dock[dock.index('class="dock-controls"') : dock.index('class="dock-controls"') + 160]
+    assert "!$store.camera.view" in controls
+
+
+def test_each_entry_has_a_discard_button_that_asks_first(client: Client) -> None:
+    page = client.get("/eng/calibration/").content.decode()
+    assert '@click="discard(e)"' in page and "Discard these frames" in page
+    script = Path(finders.find("wilds/js/guide_calibration.js")).read_text()
+    assert "uiConfirm(" in script and '"DELETE"' in script
+    # the confirmation comes before the request
+    assert script.index("uiConfirm(") < script.index('api("DELETE"')
+    # a dock that was showing the discarded entry goes back to the video
+    assert "camera.live()" in script

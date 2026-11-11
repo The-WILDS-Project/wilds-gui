@@ -1,0 +1,119 @@
+{% comment %}
+The guide camera's dark and bias frames (plan §3.17, static/wilds/js/guide_calibration.js): take
+N frames with the camera's own settings (the shutter is closed for them and put back), and look
+at the stored ones in calibration sessions. A run's frames, then its master, appear in the
+guide-camera dock in place of the video; a stored image opens there too (or in a tab of its own).
+{% endcomment %}
+<div x-data="guideCalibration()">
+    <div class="alert alert-danger py-2" role="alert" x-show="error">
+        <i class="bi bi-exclamation-octagon me-2"></i><span x-text="error"></span>
+    </div>
+
+    <div class="d-flex flex-wrap align-items-end gap-3 mb-2">
+        <div>
+            <div class="form-label small mb-1">Frame</div>
+            <div class="btn-group btn-group-sm" role="group">
+                <button type="button" class="btn" :class="kind === 'dark' ? 'btn-secondary' : 'btn-outline-secondary'" @click="kind = 'dark'">Dark</button>
+                <button type="button" class="btn" :class="kind === 'bias' ? 'btn-secondary' : 'btn-outline-secondary'" @click="kind = 'bias'">Bias</button>
+            </div>
+        </div>
+        <div>
+            <label class="form-label small mb-1" for="gc-count">Frames</label>
+            <input id="gc-count" type="number" class="form-control form-control-sm" style="width: 5.5rem;" min="1" max="200" step="1" x-model.number="count">
+        </div>
+        <div>
+            <label class="form-label small mb-1" for="gc-match">Settings of
+                <i class="bi bi-info-circle text-body-secondary" x-tooltip="'The group whose gain, offset, binning and ROI the frames use; a dark also uses its exposure. Master frames are matched to the frames they correct.'"></i></label>
+            <select id="gc-match" class="form-select form-select-sm w-auto" x-model="match">
+                <option value="single_frame">Single frame</option>
+                <option value="video">Video</option>
+            </select>
+        </div>
+        <div x-show="kind === 'dark'">
+            <div class="form-check form-check-inline mb-0">
+                <input class="form-check-input" type="checkbox" id="gc-own" x-model="ownExposure">
+                <label class="form-check-label small" for="gc-own">Own exposure</label>
+            </div>
+            <div class="input-group input-group-sm mt-1" x-show="ownExposure" style="width: 9rem;">
+                <input type="number" class="form-control" min="0.001" max="60" step="any" x-model.number="exposure" aria-label="Exposure in seconds">
+                <span class="input-group-text">s</span>
+            </div>
+        </div>
+        <div class="form-check form-switch mb-1">
+            <input class="form-check-input" type="checkbox" role="switch" id="gc-stable" x-model="requireStable">
+            <label class="form-check-label small" for="gc-stable">Wait for a stable cooler</label>
+        </div>
+    </div>
+
+    <p class="text-body-secondary small mb-2" x-show="groupText">
+        Frames will be taken with: <span x-text="groupText"></span>
+    </p>
+
+    <div class="d-flex align-items-center gap-2 mb-3">
+        <span :class="whyNot ? 'ui-unavailable' : ''" x-tooltip="whyNot">
+            <button type="button" class="btn btn-primary" :disabled="!!whyNot || busy" @click="take()">
+                <i class="bi bi-camera me-1"></i>Take <span x-text="kind"></span> frames</button>
+        </span>
+        <template x-if="job">
+            <div class="d-flex align-items-center gap-2 flex-grow-1">
+                <div class="progress flex-grow-1" style="max-width: 20rem; height: 1.2rem;">
+                    <div class="progress-bar" role="progressbar" :style="'width: ' + percent + '%'" x-text="percent + ' %'"></div>
+                </div>
+                <span class="small" x-text="job.progress?.message"></span>
+                <button type="button" class="btn btn-sm btn-outline-secondary" x-show="$store.jobs.showCancel"
+                        :disabled="!$store.jobs.canControl" @click="cancel()">Cancel</button>
+            </div>
+        </template>
+    </div>
+
+    <h6 class="mb-2">Calibration sessions</h6>
+    <p class="text-body-secondary small" x-show="sessions.length === 0">
+        None yet: the first run starts one, or start one now.
+    </p>
+    <div class="d-flex flex-wrap align-items-center gap-2 mb-2">
+        <select class="form-select form-select-sm w-auto" x-model="chosen" x-show="sessions.length > 0" aria-label="Calibration session">
+            <template x-for="s in sessions" :key="s.id">
+                <option :value="s.id" :selected="s.id === chosen" x-text="sessionText(s)"></option>
+            </template>
+        </select>
+        <button type="button" class="btn btn-sm btn-outline-secondary" x-show="current && !current.active"
+                :disabled="!$store.jobs.canControl" @click="activate()">Make active</button>
+        <input type="text" class="form-control form-control-sm" style="max-width: 14rem;" x-model="label" maxlength="80"
+               placeholder="Label for a new session (optional)" :disabled="!$store.jobs.canControl">
+        <button type="button" class="btn btn-sm btn-outline-primary" :disabled="!$store.jobs.canControl" @click="newSession()">New session</button>
+    </div>
+
+    <p class="text-body-secondary small" x-show="current && current.entries.length === 0">Nothing in this session yet.</p>
+    <div class="table-responsive" x-show="current && current.entries.length > 0">
+        <table class="table table-sm small align-middle mb-0">
+            <thead><tr><th>Entry</th><th>Frames</th><th>Exposure</th><th>Gain</th><th>Offset</th><th>Bin</th><th>ROI</th><th>Sensor</th><th>Taken</th><th></th></tr></thead>
+            <tbody>
+                <template x-for="e in (current?.entries || [])" :key="e.id">
+                    <tr>
+                        <td x-text="e.id"></td>
+                        <td x-text="e.count"></td>
+                        <td x-text="e.exposure_s + ' s'"></td>
+                        <td x-text="e.gain"></td>
+                        <td x-text="e.offset"></td>
+                        <td x-text="e.binning"></td>
+                        <td x-text="roiText(e.roi)"></td>
+                        <td x-text="e.temperature_c === null ? '' : e.temperature_c.toFixed(1) + ' °C'"></td>
+                        <td x-text="when(e.taken_ms)"></td>
+                        <td class="text-nowrap">
+                            <div class="btn-group btn-group-sm" role="group" aria-label="Actions">
+                                <button type="button" class="btn btn-outline-primary" @click="view(e, e.master)"
+                                        x-tooltip="'Show the master in the guide-camera dock'" aria-label="Show the master in the dock"><i class="bi bi-eye"></i></button>
+                                <a class="btn btn-outline-secondary" :href="viewUrl(e, e.master)" target="_blank" rel="noopener"
+                                   x-tooltip="'Open the master in a tab of its own'" aria-label="Open the master in a tab"><i class="bi bi-box-arrow-up-right"></i></a>
+                                <a class="btn btn-outline-secondary" :href="fileUrl(e, e.master)" x-tooltip="'Download the master FITS file'"
+                                   aria-label="Download the master"><i class="bi bi-download"></i></a>
+                                <button type="button" class="btn btn-outline-danger" :disabled="!$store.jobs.canControl" @click="discard(e)"
+                                        x-tooltip="$store.jobs.canControl ? 'Discard these frames' : $store.jobs.whyNot" aria-label="Discard these frames"><i class="bi bi-trash"></i></button>
+                            </div>
+                        </td>
+                    </tr>
+                </template>
+            </tbody>
+        </table>
+    </div>
+</div>

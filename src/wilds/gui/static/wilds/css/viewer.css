@@ -1,0 +1,9 @@
+/* The FITS viewer page (templates/viewer/index.html): JS9 on a dark ground that follows the
+   WILDS dark theme. JS9 draws its own menus and toolbar. */
+html, body { margin: 0; background: #14171a; color: #d8dde2; font-family: system-ui, sans-serif; }
+.viewer-bar { display: flex; gap: 1rem; align-items: baseline; padding: 0.4rem 0.75rem; border-bottom: 1px solid #2b3238; }
+.viewer-title { font-weight: 600; }
+.viewer-error { color: #ff8f8f; }
+.viewer-main { padding: 0.5rem 0.75rem 1rem; }
+.viewer-bar[hidden] { display: none; }
+[data-embed] .viewer-main { padding: 0.25rem 0.5rem; }
