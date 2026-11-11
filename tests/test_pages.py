@@ -412,3 +412,15 @@ def test_x_show_beats_bootstrap_display_utilities() -> None:
 def test_the_configuration_panel_chooses_components_with_tabs(client: Client) -> None:
     cfg = client.get("/eng/configuration/").content.decode()
     assert 'class="nav nav-tabs' in cfg and 'role="tab"' in cfg
+
+
+def test_a_group_of_settings_is_a_pane_of_its_own(client: Client) -> None:
+    """The camera keeps separate single-frame and video settings; the form shows each group in
+    its own pane, and the dock's exposure and gain are the video ones."""
+    cfg = client.get("/eng/configuration/").content.decode()
+    assert 'x-for="f in paneFields"' in cfg and 'x-for="p in panes"' in cfg
+    text = Path(finders.find("wilds/js/config.js")).read_text()
+    assert "get panes()" in text and "!f.nullable" in text
+    dock = client.get("/eng/configuration/").content.decode()
+    assert "s.settings.video.exposure_s" in dock
+    assert "{ video: { exposure_s: Number(exposure) } }" in dock

@@ -86,6 +86,7 @@ document.addEventListener("alpine:init", () => {
         component: null,
         slice: "conf",
         fields: [],
+        pane: null,           // the open pane's key ("" is the top-level fields); null picks the first
         loaded: null,         // {version, values} as the server last gave them
         draft: {},
         reason: "",
@@ -116,6 +117,7 @@ document.addEventListener("alpine:init", () => {
             this.component = component;
             this.slice = (this.index[component] || []).includes(slice) ? slice : "conf";
             this.history = [];
+            this.pane = null;
             await this.load();
         },
 
@@ -124,6 +126,7 @@ document.addEventListener("alpine:init", () => {
             try {
                 const view = await api("GET", this.path);
                 this.fields = fieldsOf(view.json_schema);
+                if (!this.panes.some((p) => p.key === this.pane)) this.pane = this.panes[0]?.key ?? "";
                 this.loaded = { version: view.version, values: view.values };
                 this.draft = copy(view.values);
                 this.reason = "";
@@ -147,13 +150,33 @@ document.addEventListener("alpine:init", () => {
             } catch { /* the banner still shows */ }
         },
 
-        changed(key) { return !same(this.draft[key], this.loaded?.values[key]); },
+        // -- panes: a required group of settings (the camera's "Single frame" and "Video") is a pane
+        // of its own; every other top-level field is in one more, "General". A leaf is addressed
+        // by its pane key ("" for a top-level field) and its field.
+        get panes() {
+            const groups = this.fields.filter((f) => f.kind === "group" && !f.nullable);
+            const rest = this.fields.filter((f) => !groups.includes(f));
+            const panes = groups.map((f) => ({ key: f.key, label: f.label, help: f.help, fields: f.children }));
+            if (rest.length) panes.push({ key: "", label: "General", help: "", fields: rest });
+            return panes;
+        },
+        get paneFields() { return this.panes.find((p) => p.key === this.pane)?.fields ?? []; },
+        get paneHelp() { return this.panes.find((p) => p.key === this.pane)?.help ?? ""; },
+        topKeys(p) { return p.key ? [p.key] : p.fields.map((f) => f.key); },
+        paneChanged(p) { return this.topKeys(p).some((k) => !same(this.draft[k], this.loaded?.values[k])); },
+        paneInvalid(p) { return p.fields.some((f) => this.issue(p.key, f)); },
+        holder(pane) { return pane ? this.draft[pane] : this.draft; },
+        loadedHolder(pane) { return (pane ? this.loaded?.values[pane] : this.loaded?.values) ?? {}; },
+
+        changed(pane, f) { return !same(this.holder(pane)[f.key], this.loadedHolder(pane)[f.key]); },
         get changes() {
-            return Object.fromEntries(this.fields.filter((f) => this.changed(f.key)).map((f) => [f.key, this.draft[f.key]]));
+            return Object.fromEntries(
+                this.fields.filter((f) => !same(this.draft[f.key], this.loaded?.values[f.key])).map((f) => [f.key, this.draft[f.key]]),
+            );
         },
         get dirty() { return Object.keys(this.changes).length > 0; },
-        issue(f) { return problem(f, this.draft[f.key]); },
-        get invalid() { return this.fields.some((f) => this.issue(f)); },
+        issue(pane, f) { return problem(f, this.holder(pane)[f.key]); },
+        get invalid() { return this.fields.some((f) => problem(f, this.draft[f.key])); },
         get whyNotSave() {
             if (!this.canEdit) return "You do not hold control";
             if (this.stale) return "Reload first: the settings changed elsewhere";
@@ -163,15 +186,16 @@ document.addEventListener("alpine:init", () => {
         },
 
         // -- editing helpers the template calls ---------------------------------------------
-        isSet(f) { return this.draft[f.key] !== null && this.draft[f.key] !== undefined; },
-        toggleSet(f, on) {
-            if (!on) { this.draft[f.key] = null; return; }
-            if (f.kind === "group") this.draft[f.key] = Object.fromEntries(f.children.map((c) => [c.key, c.min ?? 0]));
-            else this.draft[f.key] = f.min ?? f.max ?? 0;
+        isSet(pane, f) { const v = this.holder(pane)[f.key]; return v !== null && v !== undefined; },
+        toggleSet(pane, f, on) {
+            const h = this.holder(pane);
+            if (!on) { h[f.key] = null; return; }
+            if (f.kind === "group") h[f.key] = Object.fromEntries(f.children.map((c) => [c.key, c.min ?? 0]));
+            else h[f.key] = f.min ?? f.max ?? 0;
         },
-        pick(f, event) { this.draft[f.key] = f.choices[event.target.selectedIndex]; },
+        pick(pane, f, event) { this.holder(pane)[f.key] = f.choices[event.target.selectedIndex]; },
         choiceText(v) { return v === null ? "not set" : String(v); },
-        revert(f) { this.draft[f.key] = copy(this.loaded.values[f.key]); },
+        revert(pane, f) { this.holder(pane)[f.key] = copy(this.loadedHolder(pane)[f.key]); },
 
         async save() {
             if (this.whyNotSave) return;
