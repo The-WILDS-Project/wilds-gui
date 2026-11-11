@@ -424,3 +424,26 @@ def test_a_group_of_settings_is_a_pane_of_its_own(client: Client) -> None:
     dock = client.get("/eng/configuration/").content.decode()
     assert "s.settings.video.exposure_s" in dock
     assert "{ video: { exposure_s: Number(exposure) } }" in dock
+
+
+@pytest.mark.parametrize("url", ["/", "/to/", "/eng/monitoring/"])
+def test_every_page_header_shows_wilds_opstate(client: Client, url: str) -> None:
+    page = client.get(url, follow=True).content.decode()
+    assert "$store.wilds.opView" in page and "WILDS: " in page
+
+
+def test_the_to_page_offers_startup_and_shutdown_by_opstate(client: Client) -> None:
+    to = client.get("/to/").content.decode()
+    assert '@click="startup()"' in to and '@click="shutdown()"' in to
+    text = Path(finders.find("wilds/js/to.js")).read_text()
+    # start up unless started up already, shut down unless shut down already
+    assert 'this.opstate === "startedup"' in text and 'this.opstate === "shutdown"' in text
+    assert "/system/startup" in text and "/system/shutdown" in text
+
+
+def test_the_header_content_is_centred_vertically_in_the_bar() -> None:
+    """The bar is taller than its content, so the logo and the two-line Operator titles hang from
+    the top unless the bar centres them."""
+    css = Path(finders.find("wilds/css/main.css")).read_text()
+    header = css[css.index(".ui-header {") : css.index("}", css.index(".ui-header {"))]
+    assert "display: flex" in header and "align-items: center" in header

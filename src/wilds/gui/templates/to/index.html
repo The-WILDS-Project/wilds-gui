@@ -12,12 +12,33 @@
 {% block extra_js %}<script src="{% static 'wilds/js/to.js' %}?v={{ asset_version }}" defer></script>{% endblock %}
 {% block content %}
 {# Single page, no sidebar (plan §3.11). Placeholders until wilds-control serves sessions. #}
-<div class="row g-3">
+<div class="row g-3" x-data="toSessions()" x-init="start()">
     <div class="col-lg-6">
+        <div class="card mb-3" x-show="unlocked">
+            <div class="card-header"><i class="bi bi-power me-2"></i>WILDS</div>
+            <div class="card-body">
+                <p class="mb-2">State: <span class="badge" :class="$store.wilds.opView.cls" x-text="$store.wilds.opView.text"></span></p>
+                <ul class="small mb-3" x-show="($store.wilds.system?.why_not_operational || []).length">
+                    <template x-for="r in $store.wilds.system?.why_not_operational || []" :key="r">
+                        <li x-text="r"></li>
+                    </template>
+                </ul>
+                <div class="d-flex gap-2">
+                    <span :class="whyNotStartup ? 'ui-unavailable' : ''" x-tooltip="whyNotStartup">
+                        <button type="button" class="btn btn-primary" :disabled="!!whyNotStartup" @click="startup()">
+                            <i class="bi bi-play-fill me-1"></i>Start up</button>
+                    </span>
+                    <span :class="whyNotShutdown ? 'ui-unavailable' : ''" x-tooltip="whyNotShutdown">
+                        <button type="button" class="btn btn-outline-danger" :disabled="!!whyNotShutdown" @click="shutdown()">
+                            <i class="bi bi-stop-fill me-1"></i>Shut down</button>
+                    </span>
+                </div>
+            </div>
+        </div>
         <div class="card">
             <div class="card-header"><i class="bi bi-person-check me-2"></i>Control</div>
             <div class="card-body">
-                <div x-data="toSessions()" x-init="start()">
+                <div>
                     <form x-show="!unlocked" @submit.prevent="unlock()" class="d-flex gap-2 mb-2">
                         <input type="password" class="form-control form-control-sm" x-model="entry"
                                placeholder="Telescope Operator passphrase" autocomplete="off">

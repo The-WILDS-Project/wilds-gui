@@ -16,13 +16,19 @@ body {
     padding-block: 0.25rem;
     background: var(--ui-header-bg);
     border-bottom: 1px solid var(--ui-border);
+    /* The content is shorter than min-height: centre it in the bar, so the logo, the (two-line)
+       title and the badges share one middle line instead of hanging from the top. */
+    display: flex;
+    align-items: center;
 }
+.ui-header > .container-fluid { width: 100%; }
 
 .ui-header .ui-title {
     font-size: 1.5rem;
     font-weight: bold;
     letter-spacing: 0.05em;
     line-height: 1.15;           /* the Operator pages' titles take two lines */
+    text-align: center;          /* the two lines of Telescope / Operator centre on each other */
     white-space: nowrap;
 }
 

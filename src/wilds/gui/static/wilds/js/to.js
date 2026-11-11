@@ -31,6 +31,28 @@ document.addEventListener("alpine:init", () => {
 
         get unlocked() { return this.passphrase !== ""; },
 
+        // -- start-up and shutdown of WILDS (plan §3.16): offered whenever they would change
+        // something, and not while one is running.
+        get wilds() { return Alpine.store("wilds"); },
+        get opstate() { return this.wilds.system?.opstate ?? null; },
+        get whyNotStartup() {
+            if (this.opstate === null) return "WILDS state not known yet";
+            if (this.wilds.busyWith) return `WILDS is ${this.wilds.busyWith}`;
+            return this.opstate === "startedup" ? "WILDS is started up already" : "";
+        },
+        get whyNotShutdown() {
+            if (this.opstate === null) return "WILDS state not known yet";
+            if (this.wilds.busyWith) return `WILDS is ${this.wilds.busyWith}`;
+            return this.opstate === "shutdown" ? "WILDS is shut down already" : "";
+        },
+        async startup() { await this.act("/system/startup", {}, "Start-up begun"); },
+        async shutdown() {
+            const ok = await uiConfirm("Shut WILDS down? Components stop what they are doing and the cooler is switched off.", {
+                title: "Shut down", ok: "Shut down",
+            });
+            if (ok) await this.act("/system/shutdown", {}, "Shutdown begun");
+        },
+
         start() {
             this.startBeat();
             if (this.unlocked) this.poll();
@@ -72,8 +94,8 @@ document.addEventListener("alpine:init", () => {
                 });
                 if (response.status === 403) return this.lock("Wrong Telescope Operator passphrase");
                 if (!response.ok) {
-                    const detail = (await response.json().catch(() => ({}))).detail;
-                    throw new Error(detail || `HTTP ${response.status}`);
+                    const body = await response.json().catch(() => ({}));
+                    throw new Error(body.message || body.detail || `HTTP ${response.status}`);
                 }
                 showToast("success", done);
                 await this.poll();
