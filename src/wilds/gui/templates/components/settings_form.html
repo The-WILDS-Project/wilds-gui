@@ -34,8 +34,19 @@ from the schema wilds-control serves, saved as the changed fields plus the versi
             <button type="button" class="btn btn-sm btn-warning" @click="load()">Reload</button>
         </div>
 
-        <template x-for="f in fields" :key="f.key">
-            <div class="row align-items-start mb-2" :class="changed(f.key) ? 'ui-changed' : ''">
+        <div class="btn-group btn-group-sm mb-2" role="group" x-show="panes.length > 1">
+            <template x-for="p in panes" :key="p.key">
+                <button type="button" class="btn" :class="p.key === pane ? 'btn-secondary' : 'btn-outline-secondary'"
+                        @click="pane = p.key">
+                    <span x-text="p.label"></span><i class="bi bi-circle-fill ms-1 small" x-show="paneChanged(p)" aria-label="changed"></i>
+                    <i class="bi bi-exclamation-circle ms-1" x-show="paneInvalid(p)" aria-label="has a problem"></i>
+                </button>
+            </template>
+        </div>
+        <p class="text-body-secondary small" x-show="panes.length > 1 && paneHelp" x-text="paneHelp"></p>
+
+        <template x-for="f in paneFields" :key="pane + '/' + f.key">
+            <div class="row align-items-start mb-2" :class="changed(pane, f) ? 'ui-changed' : ''">
                 <label class="col-sm-3 col-form-label">
                     <span x-text="f.label"></span>
                     <i class="bi bi-info-circle ms-1 text-body-secondary" x-show="f.help" x-tooltip="f.help"></i>
@@ -44,50 +55,50 @@ from the schema wilds-control serves, saved as the changed fields plus the versi
                     <div class="d-flex align-items-center gap-2 flex-wrap">
                         <template x-if="f.nullable && f.kind !== 'choice'">
                             <div class="form-check mb-0">
-                                <input class="form-check-input" type="checkbox" :checked="isSet(f)"
-                                       @change="toggleSet(f, $event.target.checked)" :disabled="!canEdit">
+                                <input class="form-check-input" type="checkbox" :checked="isSet(pane, f)"
+                                       @change="toggleSet(pane, f, $event.target.checked)" :disabled="!canEdit">
                                 <label class="form-check-label small">set</label>
                             </div>
                         </template>
 
                         <template x-if="f.kind === 'bool'">
                             <div class="form-check form-switch mb-0">
-                                <input class="form-check-input" type="checkbox" role="switch" x-model="draft[f.key]" :disabled="!canEdit">
+                                <input class="form-check-input" type="checkbox" role="switch" x-model="holder(pane)[f.key]" :disabled="!canEdit">
                             </div>
                         </template>
-                        <template x-if="(f.kind === 'int' || f.kind === 'number') && isSet(f)">
-                            <input type="number" class="form-control form-control-sm w-auto" x-model.number="draft[f.key]"
+                        <template x-if="(f.kind === 'int' || f.kind === 'number') && isSet(pane, f)">
+                            <input type="number" class="form-control form-control-sm w-auto" x-model.number="holder(pane)[f.key]"
                                    :min="f.min" :max="f.max" :step="f.kind === 'int' ? 1 : 'any'"
-                                   :class="issue(f) ? 'is-invalid' : ''" :disabled="!canEdit">
+                                   :class="issue(pane, f) ? 'is-invalid' : ''" :disabled="!canEdit">
                         </template>
                         <template x-if="f.kind === 'choice'">
-                            <select class="form-select form-select-sm w-auto" @change="pick(f, $event)" :disabled="!canEdit">
+                            <select class="form-select form-select-sm w-auto" @change="pick(pane, f, $event)" :disabled="!canEdit">
                                 <template x-for="c in f.choices" :key="String(c)">
-                                    <option :selected="c === draft[f.key]" x-text="choiceText(c)"></option>
+                                    <option :selected="c === holder(pane)[f.key]" x-text="choiceText(c)"></option>
                                 </template>
                             </select>
                         </template>
                         <template x-if="f.kind === 'text'">
-                            <input type="text" class="form-control form-control-sm w-auto" x-model="draft[f.key]" :disabled="!canEdit">
+                            <input type="text" class="form-control form-control-sm w-auto" x-model="holder(pane)[f.key]" :disabled="!canEdit">
                         </template>
-                        <template x-if="f.kind === 'group' && isSet(f)">
+                        <template x-if="f.kind === 'group' && isSet(pane, f)">
                             <div class="d-flex flex-wrap gap-2">
                                 <template x-for="c in f.children" :key="c.key">
                                     <div class="input-group input-group-sm w-auto">
                                         <span class="input-group-text" x-text="c.label"></span>
-                                        <input type="number" class="form-control" style="width: 6rem;" x-model.number="draft[f.key][c.key]"
+                                        <input type="number" class="form-control" style="width: 6rem;" x-model.number="holder(pane)[f.key][c.key]"
                                                :min="c.min" :max="c.max" step="1" :disabled="!canEdit">
                                     </div>
                                 </template>
                             </div>
                         </template>
 
-                        <span class="text-body-secondary small" x-show="f.unit && isSet(f)" x-text="f.unit"></span>
-                        <span class="text-body-secondary small" x-show="f.nullable && !isSet(f) && f.kind !== 'choice'">not set</span>
-                        <button type="button" class="btn btn-link btn-sm p-0" x-show="changed(f.key)" @click="revert(f)"
+                        <span class="text-body-secondary small" x-show="f.unit && isSet(pane, f)" x-text="f.unit"></span>
+                        <span class="text-body-secondary small" x-show="f.nullable && !isSet(pane, f) && f.kind !== 'choice'">not set</span>
+                        <button type="button" class="btn btn-link btn-sm p-0" x-show="changed(pane, f)" @click="revert(pane, f)"
                                 x-tooltip="'Undo this edit'" aria-label="Undo this edit"><i class="bi bi-arrow-counterclockwise"></i></button>
                     </div>
-                    <div class="text-danger small" x-show="issue(f)" x-text="issue(f)"></div>
+                    <div class="text-danger small" x-show="issue(pane, f)" x-text="issue(pane, f)"></div>
                 </div>
             </div>
         </template>
