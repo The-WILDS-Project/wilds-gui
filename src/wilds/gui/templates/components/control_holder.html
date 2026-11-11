@@ -1,15 +1,2 @@
-{# "Control: held by X" on every page (plan §3.11). #}
-<div x-data class="d-flex align-items-center gap-2">
-    <i class="bi bi-person-badge"></i>
-    <span x-show="!$store.wilds.control.holder">Control: <em>nobody</em></span>
-    <span x-show="$store.wilds.control.holder && !$store.wilds.control.engineering">
-        Control: <strong x-text="$store.wilds.control.holder"></strong>
-        <code x-show="$store.wilds.control.holder_code" x-text="$store.wilds.control.holder_code"
-              x-tooltip="$store.wilds.control.holder_info" style="cursor: help;"></code>
-    </span>
-    <span x-show="$store.wilds.control.engineering" class="badge ui-warning">
-        engineering mode: <span x-text="$store.wilds.control.holder"></span>
-        <code x-show="$store.wilds.control.holder_code" x-text="$store.wilds.control.holder_code"
-              x-tooltip="$store.wilds.control.holder_info" style="cursor: help;"></code>
-    </span>
-</div>
+{# Who holds control, on every page (plan §3.11). #}
+{% include "components/pill.html" with view="$store.wilds.controlView" label="Control" icon="bi-person-badge" %}

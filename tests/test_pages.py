@@ -94,11 +94,11 @@ def test_header_shows_the_session_code_with_a_tooltip(client: Client) -> None:
 
 
 def test_holder_code_has_the_holder_origin_tooltip(client: Client) -> None:
-    # /io shows it inside the control-status tooltip; /eng and /to on the holder's own code.
-    assert "$store.wilds.control.holder_info" in client.get("/io/").content.decode()
-    for url in ("/eng/", "/to/"):
-        html = client.get(url).content.decode()
-        assert 'x-tooltip="$store.wilds.control.holder_info"' in html
+    # The control pill's tooltip carries where the holder comes from (status.js, session.js).
+    for script in ("status.js", "session.js"):
+        assert "holder_info" in Path(finders.find(f"wilds/js/{script}")).read_text()
+    for url in ("/io/", "/eng/", "/to/"):
+        assert "controlView" in client.get(url).content.decode()
 
 
 def test_to_page_lists_sessions_with_provenance_tooltips(client: Client) -> None:
@@ -155,9 +155,9 @@ def test_eng_page_asks_for_the_passphrase(client: Client) -> None:
 
 
 def test_to_online_status_is_in_the_header_except_on_the_to_page(client: Client) -> None:
-    assert "$store.wilds.to.online" in client.get("/io/").content.decode()
-    assert "$store.wilds.to.online" in client.get("/eng/").content.decode()
-    assert "TO: " not in client.get("/to/").content.decode()  # the TO page is the TO
+    assert "$store.wilds.toView" in client.get("/io/").content.decode()
+    assert "$store.wilds.toView" in client.get("/eng/").content.decode()
+    assert "$store.wilds.toView" not in client.get("/to/").content.decode()  # the TO page is the TO
 
 
 def test_io_page_warns_when_the_to_is_offline(client: Client) -> None:
@@ -225,7 +225,7 @@ def test_to_page_has_no_session(client: Client) -> None:
 
 def test_the_link_is_called_the_server(client: Client) -> None:
     html = client.get("/io/").content.decode()
-    assert "'server: ' +" in html and ">Server</h6>" in html
+    assert "serverView" in html and ">Server:</span>" in html and ">Server</h6>" in html
     assert "wilds-control: " not in html
 
 
@@ -240,18 +240,18 @@ def test_no_template_comments_leak_into_the_page(client: Client, url: str) -> No
 def test_header_says_control_not_wilds_control(client: Client) -> None:
     for url in ("/to/", "/eng/"):  # these show who holds control
         html = client.get(url).content.decode()
-        assert "Control: <em>nobody</em>" in html
+        assert "$store.wilds.controlView" in html and ">Control:</span>" in html
         assert "WILDS control" not in html
 
 
 def test_io_topbar_shows_this_sessions_control_status(client: Client) -> None:
     html = client.get("/io/").content.decode()
-    assert "$store.session.controlStatus" in html
-    for word in ("Granted", "Requested", "Refused"):
-        assert f"'{word}'" in html
-    assert "<span>Control:</span>" in html
-    assert "Control: <em>nobody</em>" not in html  # the holder moved into the tooltip
-    assert "Held by " in html
+    script = Path(finders.find("wilds/js/session.js")).read_text()
+    for word in ("granted", "requested", "refused"):
+        assert f"{word}:" in script
+    assert "$store.session.controlView" in html and ">Control:</span>" in html
+    assert "$store.wilds.controlView" not in html  # this page shows the session's own status
+    assert "Held by " in script
 
 
 def test_session_badge_has_the_person_above_the_code(client: Client) -> None:
@@ -438,7 +438,7 @@ def test_a_group_of_settings_is_a_pane_of_its_own(client: Client) -> None:
 @pytest.mark.parametrize("url", ["/", "/to/", "/eng/monitoring/"])
 def test_every_page_header_shows_wilds_opstate(client: Client, url: str) -> None:
     page = client.get(url, follow=True).content.decode()
-    assert "$store.wilds.opView" in page and "WILDS: " in page
+    assert "$store.wilds.opView" in page and ">WILDS:</span>" in page
 
 
 def test_the_to_page_offers_startup_and_shutdown_by_opstate(client: Client) -> None:
@@ -489,6 +489,38 @@ def test_the_viewer_page_loads_js9_and_takes_a_path_on_control(client: Client) -
     script = Path(finders.find("wilds/js/fits_viewer.js")).read_text()
     assert 'path.startsWith("/")' in script and 'path.startsWith("//")' in script  # only control
     assert "JS9.Preload" in script and "zscale" in script
+
+
+def test_the_viewer_has_a_fits_header_button_that_shows_text_only(client: Client) -> None:
+    page = client.get("/viewer/?path=/guide-camera/frames/1").content.decode()
+    assert 'id="viewer-header-btn"' in page and 'id="viewer-header-text"' in page
+    script = Path(finders.find("wilds/js/fits_viewer.js")).read_text()
+    assert "GetFITSHeader" in script and "innerHTML" not in script
+
+
+def test_the_dock_has_a_splitter_that_keeps_its_width(client: Client) -> None:
+    dock = client.get("/eng/calibration/").content.decode()
+    assert 'class="dock-splitter"' in dock and 'role="separator"' in dock
+    script = Path(finders.find("wilds/js/camera.js")).read_text()
+    assert "wilds-camera-width" in script and "setPointerCapture" in script
+
+
+def test_every_page_shows_the_light_pill_and_the_calibration_card_asks_the_to(client: Client) -> None:
+    for url in ("/eng/calibration/", "/to/"):
+        assert "lightView" in client.get(url).content.decode(), url
+    card = client.get("/eng/calibration/").content.decode()
+    assert "asLight('block-request')" in card and "asLight('restore-request')" in card
+    assert "Ask the TO to block the light" in card and "Ask the TO to restore the light" in card
+    status = Path(finders.find("wilds/js/status.js")).read_text()
+    assert "light_path" in status and "get lightView" in status
+
+
+def test_the_to_page_answers_light_requests(client: Client) -> None:
+    page = client.get("/to/").content.decode()
+    assert "Light to WILDS" in page and "lightDone()" in page and "lightRefuse()" in page
+    script = Path(finders.find("wilds/js/to.js")).read_text()
+    assert "/light-path/acknowledge" in script and "/light-path/refuse" in script
+    assert "/light-path/state" in script
 
 
 def test_the_calibration_page_has_the_guide_camera_card(client: Client) -> None:
@@ -550,3 +582,12 @@ def test_each_entry_has_a_discard_button_that_asks_first(client: Client) -> None
     assert script.index("uiConfirm(") < script.index('api("DELETE"')
     # a dock that was showing the discarded entry goes back to the video
     assert "camera.live()" in script
+
+
+def test_every_header_indicator_is_the_same_pill(client: Client) -> None:
+    html = client.get("/eng/").content.decode()
+    for label in ("Control", "TO", "TCS", "WILDS", "Light"):
+        assert f'<span class="pill-label">{label}:</span>' in html, label
+    assert 'class="badge ui-pill' in html and 'pill-label">Server:' in html
+    css = Path(finders.find("wilds/css/tokens.css")).read_text()
+    assert "text-transform: uppercase" in css

@@ -22,6 +22,18 @@ wilds-control (which answers any origin).
         <span id="viewer-error" class="viewer-error" role="alert"></span>
     </header>
     <div class="viewer-main">
+        <div class="viewer-tools">
+            <button type="button" id="viewer-header-btn" class="viewer-btn" title="Show the FITS header of this image">
+                FITS header</button>
+        </div>
+        <div id="viewer-header" class="viewer-header" hidden>
+            <div class="viewer-header-bar">
+                <strong>FITS header</strong>
+                <input id="viewer-header-find" type="search" placeholder="filter keywords" aria-label="Filter header cards">
+                <button type="button" id="viewer-header-close" class="viewer-btn" aria-label="Close the header">Close</button>
+            </div>
+            <pre id="viewer-header-text" tabindex="0"></pre>
+        </div>
         <div class="JS9Menubar"></div>
         <div class="JS9Toolbar"></div>
         <div class="JS9"></div>

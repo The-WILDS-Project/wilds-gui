@@ -1,0 +1,10 @@
+{% comment %}
+One header indicator: a colour-coded pill, LABEL in capitals and its value in lower case, e.g.
+LIGHT: on. `view` is an Alpine expression for {text, cls, tip, icon?} (static/wilds/js/status.js,
+session.js); `label` and `icon` are the fixed parts.
+{% endcomment %}
+<span x-data class="badge ui-pill" :class="{{ view }}.cls" x-tooltip="{{ view }}.tip">
+    <i class="bi" :class="{{ view }}.icon || '{{ icon }}'"></i>
+    <span class="pill-label">{{ label }}:</span>
+    <span class="pill-value" x-text="{{ view }}.text"></span>
+</span>

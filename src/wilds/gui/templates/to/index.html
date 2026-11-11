@@ -35,6 +35,29 @@
                 </div>
             </div>
         </div>
+        <div class="card mb-3" x-show="unlocked">
+            <div class="card-header"><i class="bi bi-brightness-high me-2"></i>Light to WILDS</div>
+            <div class="card-body">
+                <p class="mb-2">State:
+                    <span class="badge" :class="$store.wilds.lightView.cls" x-text="$store.wilds.lightView.text"></span></p>
+                <template x-if="lightPending">
+                    <div class="alert alert-warning py-2">
+                        <strong x-text="(light.requested_by || 'The instrument operator') + (light.state === 'block_requested' ? ' asks you to block the light to WILDS' : ' asks you to let the light in again')"></strong>
+                        <div class="small mt-1">Do what is needed on the telescope, then confirm.</div>
+                        <div class="d-flex gap-2 mt-2">
+                            <button type="button" class="btn btn-sm btn-primary" @click="lightDone()">
+                                <i class="bi bi-check-lg me-1"></i><span x-text="light.state === 'block_requested' ? 'Light is blocked' : 'Light is restored'"></span></button>
+                            <button type="button" class="btn btn-sm btn-outline-secondary" @click="lightRefuse()">Not now…</button>
+                        </div>
+                    </div>
+                </template>
+                <div class="d-flex flex-wrap gap-2 align-items-center">
+                    <span class="small text-body-secondary">Tell WILDS how things are:</span>
+                    <button type="button" class="btn btn-sm btn-outline-secondary" :disabled="light?.state === 'lit'" @click="lightIs('lit')">Light is on</button>
+                    <button type="button" class="btn btn-sm btn-outline-secondary" :disabled="light?.state === 'blocked'" @click="lightIs('blocked')">Light is blocked</button>
+                </div>
+            </div>
+        </div>
         <div class="card">
             <div class="card-header"><i class="bi bi-person-check me-2"></i>Control</div>
             <div class="card-body">

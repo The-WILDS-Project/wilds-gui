@@ -19,6 +19,9 @@ document.addEventListener("alpine:init", () => {
     const base = document.body.dataset.controlUrl;
     const SIZES = ["thumb", "dock", "off"];
     const SIZE_KEY = "wilds-camera-size";
+    const WIDTH_KEY = "wilds-camera-width";
+    const MIN_WIDTH = 320;
+    const maxWidth = () => Math.max(MIN_WIDTH, Math.min(1000, Math.round(window.innerWidth * 0.7)));
     const NARROW = window.matchMedia("(max-width: 1199.98px)");  // too narrow for the full dock
 
     const read = (key) => { try { return localStorage.getItem(key); } catch { return null; } };
@@ -33,6 +36,8 @@ document.addEventListener("alpine:init", () => {
     Alpine.store("camera", {
         size: SIZES.includes(read(SIZE_KEY)) ? read(SIZE_KEY) : "dock",  // thumb | dock | off
         narrow: NARROW.matches,
+        width: Number(read(WIDTH_KEY)) || 540,  // px, the full dock; set by the splitter
+        dragging: false,
         link: "off",          // off | connecting | live | lost
         meta: null,           // the metadata of the frame on screen
         url: null,            // blob: URL of that frame
@@ -81,18 +86,61 @@ document.addEventListener("alpine:init", () => {
 
         /** Show a file on wilds-control (a path) in the dock's viewer instead of the video.
          *  ``open`` brings the dock up even if it is hidden or small (a click asked for it). */
-        show(path, title, { open = false } = {}) {
+        show(path, title, { open = false, size = null } = {}) {
             if (!path || !path.startsWith("/") || path.startsWith("//")) return;
             // The viewer sizes JS9 to the frame it is shown in; a frame that is hidden at the
             // moment it loads measures nothing, so the dock says how big it will be.
             const box = document.querySelector(".dock-view");
-            const w = (box && box.clientWidth) || 516;
-            const h = (box && box.clientHeight) || 480;
+            const w = size?.w || (box && box.clientWidth) || 516;
+            const h = size?.h || (box && box.clientHeight) || 480;
             const src = `/viewer/?embed=1&w=${w}&h=${h}&path=${encodeURIComponent(path)}&title=${encodeURIComponent(title || "")}`;
             if (this.view?.src !== src) this.view = { title: title || path, src, path };
             if (open && this.size !== "dock") this.setSize("dock");
         },
         live() { this.view = null; },
+
+        /** The splitter between the page and the dock: the dock's width, kept in this browser. */
+        setWidth(w, { save = true } = {}) {
+            this.width = Math.min(maxWidth(), Math.max(MIN_WIDTH, Math.round(w)));
+            if (save) write(WIDTH_KEY, String(this.width));
+        },
+        drag(event) {
+            event.preventDefault();
+            const handle = event.currentTarget;
+            handle.setPointerCapture(event.pointerId);  // keep the events over the viewer's frame
+            this.dragging = true;
+            const move = (e) => this.setWidth(window.innerWidth - e.clientX, { save: false });
+            const end = () => {
+                handle.removeEventListener("pointermove", move);
+                handle.removeEventListener("pointerup", end);
+                handle.removeEventListener("pointercancel", end);
+                this.dragging = false;
+                this.setWidth(this.width);
+                this.refit();
+            };
+            handle.addEventListener("pointermove", move);
+            handle.addEventListener("pointerup", end);
+            handle.addEventListener("pointercancel", end);
+        },
+        nudge(event) {
+            const step = event.shiftKey ? 80 : 20;
+            if (event.key === "ArrowLeft") this.setWidth(this.width + step);
+            else if (event.key === "ArrowRight") this.setWidth(this.width - step);
+            else return;
+            event.preventDefault();
+            this.refit();
+        },
+        /** The viewer in the dock sizes itself when it loads: load it again at the new size. */
+        refit() {
+            if (!this.view) return;
+            const { path, title } = this.view;
+            setTimeout(() => {  // after the dock has taken its new width
+                const box = document.querySelector(".dock-view");
+                const size = { w: box.clientWidth, h: box.clientHeight };  // measured while shown
+                this.view = null;
+                setTimeout(() => this.show(path, title, { size }), 0);
+            }, 50);
+        },
 
         setSize(size) {
             if (!SIZES.includes(size)) return;
@@ -130,7 +178,8 @@ document.addEventListener("alpine:init", () => {
     const CALIBRATION = ["guide-camera-dark", "guide-camera-bias"];
     let following = null;     // the calibration job being shown, by id
     let shownFrame = null;    // the newest calibration frame already shown
-    Alpine.effect(() => {
+    // Started once every store exists (this script may run before status.js has made "wilds").
+    const follow = () => Alpine.effect(() => {
         const w = Alpine.store("wilds");
         const jobs = w.jobs || [];
         const frameId = w.guide_camera?.last_calibration_frame_id ?? null;
@@ -152,6 +201,7 @@ document.addEventListener("alpine:init", () => {
             }
         }
     });
+    document.addEventListener("alpine:initialized", follow);
 
     // -- the video socket ----------------------------------------------------------------
 

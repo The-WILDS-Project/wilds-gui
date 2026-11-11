@@ -41,6 +41,23 @@ document.addEventListener("alpine:init", () => {
             return "none";
         },
 
+        /** The Instrument Operator header's pill: this session's own status {text, cls, tip}. */
+        get controlView() {
+            const w = Alpine.store("wilds").control;
+            const status = this.controlStatus;
+            const tip = [
+                w.holder ? `Held by ${w.holder} [${w.holder_code}]` : "Nobody holds control",
+                w.holder_info,   // where the holder comes from
+                status === "requested" ? "Your request is waiting for the Telescope Operator" + (Alpine.store("wilds").to.online === false ? " (offline)" : "") : "",
+                status === "refused" ? "Refused" + (this.refusalReason ? `: ${this.refusalReason}` : "") : "",
+            ].filter(Boolean).join("\n");
+            return {
+                text: status + (status === "granted" && this.engineering ? " · engineering" : ""),
+                cls: { granted: "ui-success", requested: "ui-info", refused: "ui-danger", none: "ui-secondary" }[status],
+                tip,
+            };
+        },
+
         // Actions that depend only on this session (greyed out with a reason, plan §3.12).
         get local() {
             let request = { ok: true, why: "" };
