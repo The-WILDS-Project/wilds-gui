@@ -66,6 +66,20 @@ document.addEventListener("alpine:init", () => {
         async lightIs(state) {
             await this.act("/light-path/state", { state }, state === "blocked" ? "Marked blocked" : "Marked lit", "PUT");
         },
+        // -- a target (or a rotation) the instrument operator sent, waiting for the TO (plan §3.12).
+        // With External Command Preview on the TCS holds it until it is accepted in the TCS's own
+        // preview panel; this page shows what is waiting. Only the simulated TCS can be answered from
+        // here (development), through the /dev helpers.
+        get pending() { return this.wilds.telescope?.telemetry?.pending || null; },
+        get simulated() { return this.wilds.telescope?.kind === "simulated" && this.wilds.opmode === "development"; },
+        async answerPending(accept) {
+            const what = this.pending?.what ?? "the command";
+            try {
+                const response = await fetch(`${base}/dev/telescope/${accept ? "accept" : "reject"}`, { method: "POST" });
+                if (!response.ok) throw new Error(`HTTP ${response.status}`);
+                showToast("success", accept ? `Accepted ${what}` : `Rejected ${what}`);
+            } catch (e) { showToast("error", "Could not answer", String(e.message || e)); }
+        },
         async startup() { await this.act("/system/startup", {}, "Start-up begun"); },
         async shutdown() {
             const ok = await uiConfirm("Shut WILDS down? Components stop what they are doing and the cooler is switched off.", {

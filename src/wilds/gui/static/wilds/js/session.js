@@ -68,6 +68,8 @@ document.addEventListener("alpine:init", () => {
                 request_control: request,
                 cal_lamps: notYet, cal_slit: notYet, cal_adc: notYet, cal_focus: notYet,
                 cal_bias: notYet, cal_dark: notYet, cal_flat: notYet,
+                guiding_start: notYet, guiding_stop: notYet,
+                acquire_start: notYet, acquire_stop: notYet,
             };
         },
 

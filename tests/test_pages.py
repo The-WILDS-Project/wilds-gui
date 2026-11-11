@@ -81,6 +81,8 @@ def test_ui_js_never_inserts_html() -> None:
         "config.js",
         "guide_calibration.js",
         "fits_viewer.js",
+        "acquisition.js",
+        "slit.js",
     ):
         text = Path(finders.find(f"wilds/js/{name}")).read_text()
         assert "innerHTML" not in text and "insertAdjacentHTML" not in text, name
@@ -591,3 +593,53 @@ def test_every_header_indicator_is_the_same_pill(client: Client) -> None:
     assert 'class="badge ui-pill' in html and 'pill-label">Server:' in html
     css = Path(finders.find("wilds/css/tokens.css")).read_text()
     assert "text-transform: uppercase" in css
+
+
+def test_the_operations_page_has_a_tab_per_operation_with_test_for_development(client: Client) -> None:
+    page = client.get("/io/operations/").content.decode()
+    for tab in ("'acquisition', 'Acquisition'", "'focus', 'Focus'", "'guiding', 'Guiding'", "'test', 'Test'"):
+        assert tab in page, tab
+    assert "wilds-ops-tab" in page and "opmode === 'development'" in page
+    assert "Test job" in page  # inside the Test tab
+    assert "Start guiding" in page and "Stop guiding" in page  # greyed until control can guide
+    assert "panels come here" not in page
+
+
+def test_the_acquisition_tab_has_the_target_entry_and_the_slew(client: Client) -> None:
+    page = client.get("/io/operations/").content.decode()
+    assert 'x-data="acquisitionTarget()"' in page and "wilds/js/acquisition.js" in page
+    for part in ("Resolve", "RA (J2000)", "Slit PA", '@click="slew()"'):
+        assert part in page, part
+    script = Path(finders.find("wilds/js/acquisition.js")).read_text()
+    assert "/telescope/slew" in script and "/resolve?name=" in script and "Slew now" in script
+    # only the coordinates go to the server: the name is for Resolve alone
+    assert "{ ...t, rot_pa: Number(this.pa) }" in script and "name: this.name" not in script
+    assert "acquisitionTarget" not in client.get("/io/products/").content.decode()
+
+
+def test_the_acquisition_tab_adjusts_offsets_and_rotation_with_the_slit_overlay(client: Client) -> None:
+    page = client.get("/io/operations/").content.decode()
+    for part in ('x-data="acquisitionOffsets()"', 'x-data="acquisitionRotation()"', "Adjust offsets", "Adjust rotation", "Start acquisition"):
+        assert part in page, part
+    assert "$store.slit.active = shown === 'acquisition'" in page
+    dock = client.get("/io/operations/").content.decode()
+    assert "wilds/js/slit.js" in dock and 'class="dock-overlay"' in dock and ":view-box.camel" in dock
+    script = Path(finders.find("wilds/js/acquisition.js")).read_text()
+    assert "/telescope/offset" in script and "/telescope/rotator" in script and "/telescope/offset/absorb" in script
+    slit = Path(finders.find("wilds/js/slit.js")).read_text()
+    assert "/config/guide-camera/cal" in slit and "setPointerCapture" in slit
+
+
+def test_the_to_page_shows_what_waits_for_the_to(client: Client) -> None:
+    page = client.get("/to/").content.decode()
+    assert "answerPending(true)" in page and "answerPending(false)" in page and "pending.detail" in page
+    script = Path(finders.find("wilds/js/to.js")).read_text()
+    assert "/dev/telescope/" in script and "telemetry?.pending" in script
+
+
+def test_the_live_view_can_be_zoomed_and_panned(client: Client) -> None:
+    dock = client.get("/io/operations/").content.decode()
+    for part in ('class="dock-zoombar"', 'class="dock-zoom"', "zoomToSlit()", "zoomReset()", "$store.camera.wheel($event)", "startPan($event)"):
+        assert part in dock, part
+    script = Path(finders.find("wilds/js/camera.js")).read_text()
+    assert "setZoom(" in script and "get zoomStyle()" in script

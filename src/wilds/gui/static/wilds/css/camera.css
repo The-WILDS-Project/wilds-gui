@@ -98,3 +98,30 @@
 }
 .dock-view iframe { display: block; width: 100%; height: 100%; border: 0; }
 .dock-thumb .dock-viewbar, .dock-thumb .dock-view { display: none; }
+
+/* The slit overlay on the live view (static/wilds/js/slit.js); the SVG uses the frame's own pixels. */
+.dock-overlay { position: absolute; inset: 0; width: 100%; height: 100%; pointer-events: none; }
+.dock-overlay .slit-now { stroke: #38d39f; }
+.dock-overlay .slit-pending { stroke: #ffc107; }
+.dock-overlay .slit-centre, .dock-overlay .slit-link { stroke: #38d39f; opacity: 0.8; }
+.dock-overlay .slit-mark { stroke: #ffc107; }
+.dock-overlay .slit-compass { stroke: #9aa5b1; }
+.dock-overlay .slit-label { fill: #d8dde2; font-family: var(--bs-font-monospace); paint-order: stroke; stroke: #000; stroke-width: 3px; }
+.dock-overlay .slit-handle { fill: #ffc107; fill-opacity: 0.35; stroke: #ffc107; stroke-width: 2; cursor: grab; pointer-events: all; }
+.dock-overlay .slit-pickarea { fill: transparent; cursor: crosshair; pointer-events: all; }
+
+/* Zooming the live view: the frame and its overlay are scaled together inside the dock frame. */
+.dock-zoom { position: absolute; inset: 0; transform-origin: 0 0; }
+.dock-frame.zoomed { cursor: grab; }
+.dock-zoombar {
+    position: absolute;
+    right: 0.35rem;
+    bottom: 0.35rem;
+    z-index: 3;
+    display: flex;
+    align-items: center;
+    gap: 0.2rem;
+}
+.dock-zoombar .btn { opacity: 0.75; }
+.dock-zoombar .btn:hover:not(:disabled) { opacity: 1; }
+.dock-zoombar .zoom-text { color: #d8dde2; font-size: 0.75rem; font-family: var(--bs-font-monospace); text-shadow: 0 0 3px #000; margin-left: 0.2rem; }

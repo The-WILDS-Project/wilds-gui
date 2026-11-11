@@ -7,6 +7,7 @@ button; the video socket is closed). The choice is remembered per browser; a nar
 the dock as a thumbnail. Logic and the video socket: static/wilds/js/camera.js.
 {% endcomment %}
 <script src="{% static 'wilds/js/camera.js' %}?v={{ asset_version }}" defer></script>
+<script src="{% static 'wilds/js/slit.js' %}?v={{ asset_version }}" defer></script>
 <div class="dock-splitter" x-data x-show="$store.camera.shown === 'dock'" :class="{ dragging: $store.camera.dragging }"
      role="separator" aria-orientation="vertical" tabindex="0" aria-label="Resize the guide camera dock"
      x-tooltip="'Drag to resize (or use the left and right arrow keys)'"
@@ -55,8 +56,50 @@ the dock as a thumbnail. Logic and the video socket: static/wilds/js/camera.js.
             </template>
         </div>
 
-        <div class="dock-frame" x-show="!$store.camera.view" :style="`aspect-ratio: ${$store.camera.aspect}`">
+        <div class="dock-frame" x-show="!$store.camera.view" :style="`aspect-ratio: ${$store.camera.aspect}`"
+             :class="{ zoomed: $store.camera.zoom > 1 && $store.camera.shown === 'dock' }"
+             @wheel.prevent="$store.camera.wheel($event)" @pointerdown="$store.camera.startPan($event)">
+          <div class="dock-zoom" :style="$store.camera.zoomStyle">
             <img x-show="$store.camera.url" :src="$store.camera.url" alt="Guide camera frame">
+            {# The slit overlay (static/wilds/js/slit.js): drawn in the frame's own pixels, over the image. #}
+            <svg class="dock-overlay" x-data x-show="$store.slit.show" :view-box.camel="$store.slit.v.vb" preserveAspectRatio="none"
+                 :class="{ picking: $store.slit.pick }" aria-label="Slit overlay">
+                <g :stroke-width="$store.slit.v.stroke" fill="none">
+                    <g x-show="$store.slit.v.hasNow">
+                        <rect class="slit-now" :x="$store.slit.v.now?.x" :y="$store.slit.v.now?.y" :width="$store.slit.v.now?.w" :height="$store.slit.v.now?.h"
+                              :transform="$store.slit.v.now?.t"></rect>
+                    </g>
+                    <g x-show="$store.slit.v.hasPending">
+                        <rect class="slit-pending" :x="$store.slit.v.pending?.x" :y="$store.slit.v.pending?.y" :width="$store.slit.v.pending?.w" :height="$store.slit.v.pending?.h"
+                              :transform="$store.slit.v.pending?.t" :stroke-dasharray="$store.slit.v.stroke * 4"></rect>
+                    </g>
+                    <line class="slit-centre" :x1="$store.slit.v.cx - $store.slit.v.tick" :y1="$store.slit.v.cy" :x2="$store.slit.v.cx + $store.slit.v.tick" :y2="$store.slit.v.cy"></line>
+                    <line class="slit-centre" :x1="$store.slit.v.cx" :y1="$store.slit.v.cy - $store.slit.v.tick" :x2="$store.slit.v.cx" :y2="$store.slit.v.cy + $store.slit.v.tick"></line>
+                    <line class="slit-link" x-show="$store.slit.pickMark" :x1="$store.slit.v.cx" :y1="$store.slit.v.cy" :x2="$store.slit.pickMark?.x" :y2="$store.slit.pickMark?.y"></line>
+                    <circle class="slit-mark" x-show="$store.slit.pickMark" :cx="$store.slit.pickMark?.x" :cy="$store.slit.pickMark?.y" :r="$store.slit.v.handle?.r"></circle>
+                    <line class="slit-compass" :x1="$store.slit.v.compass?.ox" :y1="$store.slit.v.compass?.oy" :x2="$store.slit.v.compass?.nx" :y2="$store.slit.v.compass?.ny"></line>
+                    <line class="slit-compass" :x1="$store.slit.v.compass?.ox" :y1="$store.slit.v.compass?.oy" :x2="$store.slit.v.compass?.ex" :y2="$store.slit.v.compass?.ey"></line>
+                </g>
+                <text class="slit-label" :x="$store.slit.v.compass?.nx" :y="$store.slit.v.compass?.ny" :font-size="$store.slit.v.compass?.f" text-anchor="middle" dy="-0.3em">N</text>
+                <text class="slit-label" :x="$store.slit.v.compass?.ex" :y="$store.slit.v.compass?.ey" :font-size="$store.slit.v.compass?.f" text-anchor="middle" dy="0.35em" dx="0.9em">E</text>
+                <text class="slit-label" :x="$store.slit.v.textX" :y="$store.slit.v.textY" :font-size="$store.slit.v.font" x-text="$store.slit.v.text"></text>
+                <rect class="slit-pickarea" x-show="$store.slit.pick" x="0" y="0" :width="$store.slit.v.w" :height="$store.slit.v.h"
+                      @click="$store.slit.clickPick($event)"></rect>
+                <circle class="slit-handle" x-show="!$store.slit.pick" :cx="$store.slit.v.handle?.x" :cy="$store.slit.v.handle?.y" :r="$store.slit.v.handle?.r"
+                        @pointerdown="$store.slit.startRotate($event)"></circle>
+            </svg>
+          </div>
+            <div class="dock-zoombar" x-show="$store.camera.url && $store.camera.shown === 'dock'" @pointerdown.stop @wheel.stop>
+                <button type="button" class="btn btn-sm btn-dark" @click="$store.camera.zoomBy(0.8)" :disabled="$store.camera.zoom <= 1"
+                        x-tooltip="'Zoom out (or scroll the mouse wheel over the view)'" aria-label="Zoom out"><i class="bi bi-zoom-out"></i></button>
+                <button type="button" class="btn btn-sm btn-dark" @click="$store.camera.zoomBy(1.25)" :disabled="$store.camera.zoom >= 16"
+                        x-tooltip="'Zoom in'" aria-label="Zoom in"><i class="bi bi-zoom-in"></i></button>
+                <button type="button" class="btn btn-sm btn-dark" @click="$store.camera.zoomToSlit()" :disabled="!$store.slit.calOk"
+                        x-tooltip="$store.slit.calOk ? 'Zoom in on the slit' : $store.slit.calWhy" aria-label="Zoom to the slit"><i class="bi bi-bullseye"></i></button>
+                <button type="button" class="btn btn-sm btn-dark" @click="$store.camera.zoomReset()" :disabled="$store.camera.zoom <= 1"
+                        x-tooltip="'Show the whole frame'" aria-label="Show the whole frame"><i class="bi bi-fullscreen-exit"></i></button>
+                <span class="zoom-text" x-show="$store.camera.zoom > 1" x-text="$store.camera.zoom.toFixed(1) + '×'"></span>
+            </div>
             <div class="dock-empty text-body-secondary small" x-show="!$store.camera.url">
                 <span x-text="$store.camera.link === 'live' ? 'No frame yet: start the camera' : $store.camera.headline"></span>
             </div>
@@ -84,10 +127,10 @@ the dock as a thumbnail. Logic and the video socket: static/wilds/js/camera.js.
                 <div class="d-flex gap-2">
                     <button type="button" class="btn btn-sm btn-primary" x-show="!$store.camera.streaming"
                             :disabled="!$store.jobs.canControl || $store.camera.busy || !$store.wilds.guide_camera"
-                            @click="$store.camera.start()"><i class="bi bi-play-fill me-1"></i>Start</button>
+                            @click="$store.camera.start()"><i class="bi bi-play-fill me-1"></i>Start live capture</button>
                     <button type="button" class="btn btn-sm btn-outline-primary" x-show="$store.camera.streaming"
                             :disabled="!$store.jobs.canControl || $store.camera.busy"
-                            @click="$store.camera.stop()"><i class="bi bi-stop-fill me-1"></i>Stop</button>
+                            @click="$store.camera.stop()"><i class="bi bi-stop-fill me-1"></i>Stop live capture</button>
                     <a class="btn btn-sm btn-outline-secondary" target="_blank" rel="noopener"
                        x-show="$store.wilds.guide_camera?.last_frame_id != null"
                        x-tooltip="'Open the latest frame in the JS9 viewer'"

@@ -36,6 +36,28 @@
             </div>
         </div>
         <div class="card mb-3" x-show="unlocked">
+            <div class="card-header"><i class="bi bi-crosshair me-2"></i>Telescope</div>
+            <div class="card-body">
+                <p class="mb-2">TCS: <span class="badge" :class="$store.wilds.tcsView.cls" x-text="$store.wilds.tcsView.text"></span>
+                    <span class="small text-body-secondary ms-2" x-text="$store.wilds.previewText"></span></p>
+                <template x-if="pending">
+                    <div class="alert alert-warning py-2 mb-0">
+                        <strong x-text="(pending.command === 'target' ? 'Target waiting for you: ' : 'Rotation waiting for you: ') + pending.what"></strong>
+                        <div class="small mt-1" x-text="pending.detail"></div>
+                        <div class="small mt-1" x-show="!simulated">Accept it in the TCS's preview panel; this page shows it while it waits.</div>
+                        <div class="d-flex gap-2 mt-2" x-show="simulated">
+                            <button type="button" class="btn btn-sm btn-primary" @click="answerPending(true)"><i class="bi bi-check-lg me-1"></i>Accept</button>
+                            <button type="button" class="btn btn-sm btn-outline-secondary" @click="answerPending(false)">Reject</button>
+                            <span class="small text-body-secondary align-self-center">simulated TCS</span>
+                        </div>
+                    </div>
+                </template>
+                <p class="small text-body-secondary mb-0" x-show="!pending">
+                    <span x-text="$store.wilds.telescope?.telemetry?.target ? 'Current target: ' + $store.wilds.telescope.telemetry.target.name : 'No target yet'"></span>.
+                    Nothing is waiting for you.</p>
+            </div>
+        </div>
+        <div class="card mb-3" x-show="unlocked">
             <div class="card-header"><i class="bi bi-brightness-high me-2"></i>Light to WILDS</div>
             <div class="card-body">
                 <p class="mb-2">State:
