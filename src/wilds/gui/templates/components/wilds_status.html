@@ -1,0 +1,6 @@
+{# WILDS' opstate on every page, for every session (plan §3.16): started up, shut down, and whether operational. #}
+<div x-data class="d-flex align-items-center gap-2">
+    <span class="badge" :class="$store.wilds.opView.cls" x-tooltip="$store.wilds.opView.tip">
+        <i class="bi bi-power me-1"></i><span x-text="'WILDS: ' + $store.wilds.opView.text"></span>
+    </span>
+</div>

@@ -12,6 +12,7 @@ document.addEventListener("alpine:init", () => {
         activities: {},              // {component: [{name, since_ms, details}]}, running only (plan §3.13)
         jobs: [],                    // active jobs, then the last few finished (plan §3.14)
         guide_camera: null,          // {kind, streaming, exposing, settings, cooler, last_frame_id}; null until known
+        system: null,                // WILDS as a whole: {opstate, operational, why_not_operational, components}; null until known
         conf_versions: {},           // {"component/slice": version}: an open settings form compares it with what it loaded
         lastUpdate: null,
         control: { holder: null, engineering: false, holder_code: null, holder_info: null },
@@ -34,6 +35,27 @@ document.addEventListener("alpine:init", () => {
             return this.actions[name]
                 || Alpine.store("session")?.local[name]
                 || { ok: false, why: "Status from the server not available" };
+        },
+        /** "starting up" or "shutting down" while WILDS' umbrella activity runs, else null. */
+        get busyWith() {
+            const names = (this.activities.wilds || []).map((a) => a.name);
+            return names.includes("StartingUp") ? "starting up" : names.includes("ShuttingDown") ? "shutting down" : null;
+        },
+        /** What the header shows for WILDS: {text, cls, tip}. */
+        get opView() {
+            const sys = this.system;
+            if (!sys) return { text: "unknown", cls: "ui-secondary", tip: "WILDS state not known yet" };
+            const label = { initializing: "initializing", initialized: "initialized", startedup: "started up", shutdown: "shut down" };
+            const reasons = sys.why_not_operational || [];
+            const tip = [`State: ${label[sys.opstate] || sys.opstate}`, sys.operational ? "Operational" : "Not operational", ...reasons.map((r) => `· ${r}`)].join("\n");
+            if (this.busyWith) return { text: this.busyWith + "…", cls: "ui-info", tip };
+            if (sys.opstate === "initializing") return { text: label.initializing, cls: "ui-info", tip };
+            if (sys.opstate === "startedup") {
+                return sys.operational
+                    ? { text: label.startedup, cls: "ui-success", tip }
+                    : { text: label.startedup + ", not operational", cls: "ui-warning", tip };
+            }
+            return { text: label[sys.opstate] || sys.opstate, cls: "ui-secondary", tip };
         },
         get previewText() {
             if (this.tcs.preview === true) return "Preview on: targets need TO approval";
