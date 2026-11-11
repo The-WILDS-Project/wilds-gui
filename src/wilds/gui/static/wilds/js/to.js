@@ -45,6 +45,27 @@ document.addEventListener("alpine:init", () => {
             if (this.wilds.busyWith) return `WILDS is ${this.wilds.busyWith}`;
             return this.opstate === "shutdown" ? "WILDS is shut down already" : "";
         },
+        // -- the light to WILDS (plan §3.17): the instrument operator asks, the TO does
+        // what is needed and says so.
+        get light() { return this.wilds.light_path; },
+        get lightPending() { return ["block_requested", "unblock_requested"].includes(this.light?.state); },
+        async lightDone() {
+            const blocking = this.light.state === "block_requested";
+            const note = await uiPrompt(
+                blocking ? "The light to WILDS is blocked. Note (optional, e.g. how)" : "The light reaches WILDS again. Note (optional)",
+                { title: blocking ? "Light blocked" : "Light restored", ok: "Confirm" },
+            );
+            if (note === null) return;
+            await this.act("/light-path/acknowledge", note ? { note } : {}, blocking ? "Light blocked" : "Light restored");
+        },
+        async lightRefuse() {
+            const reason = await uiPrompt("Why not now? The instrument operator sees this.", { title: "Cannot do it now", ok: "Refuse" });
+            if (reason === null) return;
+            await this.act("/light-path/refuse", { reason: reason || "not now" }, "Request refused");
+        },
+        async lightIs(state) {
+            await this.act("/light-path/state", { state }, state === "blocked" ? "Marked blocked" : "Marked lit", "PUT");
+        },
         async startup() { await this.act("/system/startup", {}, "Start-up begun"); },
         async shutdown() {
             const ok = await uiConfirm("Shut WILDS down? Components stop what they are doing and the cooler is switched off.", {
@@ -85,10 +106,10 @@ document.addEventListener("alpine:init", () => {
             this.error = message;
         },
         /** POST a TO action; refresh the list on success, toast the reason on failure. */
-        async act(path, body, done) {
+        async act(path, body, done, method = "POST") {
             try {
                 const response = await fetch(`${base}${path}`, {
-                    method: "POST",
+                    method,
                     headers: { "X-TO-Passphrase": this.passphrase, "Content-Type": "application/json" },
                     body: JSON.stringify(body || {}),
                 });

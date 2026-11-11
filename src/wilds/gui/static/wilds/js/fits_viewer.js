@@ -43,5 +43,29 @@
         fail("JS9 did not load");
         return;
     }
+    // The header: JS9 has it under File > display ... > FITS header, which is easy to miss and
+    // opens a small floating window; this shows it in a panel over the viewer instead.
+    const panel = document.getElementById("viewer-header");
+    const text = document.getElementById("viewer-header-text");
+    const find = document.getElementById("viewer-header-find");
+    let cards = [];
+    const draw = () => {
+        const q = find.value.trim().toLowerCase();
+        text.textContent = cards.filter((c) => !q || c.toLowerCase().includes(q)).join("\n");
+    };
+    document.getElementById("viewer-header-btn").addEventListener("click", () => {
+        let raw = "";
+        try { raw = JS9.GetFITSHeader(true) || ""; } catch (e) { raw = ""; }
+        if (!raw) { fail("The image is not loaded yet, so there is no header to show"); return; }
+        fail("");
+        cards = raw.split("\n").map((c) => c.trimEnd()).filter((c) => c && c !== "END");
+        find.value = "";
+        draw();
+        panel.hidden = false;
+        find.focus();
+    });
+    document.getElementById("viewer-header-close").addEventListener("click", () => { panel.hidden = true; });
+    find.addEventListener("input", draw);
+    document.addEventListener("keydown", (e) => { if (e.key === "Escape") panel.hidden = true; });
     JS9.Preload(`${base}${path}`, { scaleclipping: "zscale", colormap: "grey", scale: "linear", zoom: "tofit" });
 })();

@@ -1,12 +1,10 @@
 {# Link to the server, i.e. wilds-control (MAST components/controller_status.html, fed by the status stream). #}
 <div class="dropdown" x-data>
-    <button class="btn btn-sm btn-link dropdown-toggle text-decoration-none text-body" type="button"
+    <button class="badge ui-pill dropdown-toggle border-0" :class="$store.wilds.serverView.cls" type="button"
             data-bs-toggle="dropdown" aria-expanded="false">
-        <span class="status-dot"
-              :class="{ ok: 'status-ok', connecting: 'status-warning', offline: 'status-error' }[$store.wilds.link]"
-              aria-hidden="true"></span>
-        <span class="d-none d-lg-inline"
-              x-text="'server: ' + { ok: 'OK', connecting: 'connecting', offline: 'offline' }[$store.wilds.link]"></span>
+        <i class="bi bi-hdd-network"></i>
+        <span class="pill-label">Server:</span>
+        <span class="pill-value" x-text="$store.wilds.serverView.text"></span>
     </button>
     <div class="dropdown-menu dropdown-menu-end p-3" style="min-width: 300px;">
         <h6 class="dropdown-header px-0">Server</h6>

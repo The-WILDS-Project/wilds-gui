@@ -1,20 +1,2 @@
-{# TCS access badge on every page, for every session (plan §3.12). #}
-<div x-data class="d-flex align-items-center gap-2">
-    <span class="badge"
-          :class="$store.wilds.tcs.stale ? 'ui-secondary'
-                : $store.wilds.tcs.lockedOut ? 'ui-danger'
-                : $store.wilds.tcs.preview === false ? 'ui-warning' : 'ui-success'"
-          x-tooltip="[
-              'TCS state: ' + ($store.wilds.tcs.state ?? 'unknown'),
-              'Health: ' + ($store.wilds.tcs.health ?? 'unknown'),
-              'TCS user mode: ' + ($store.wilds.tcs.accessMode ?? 'unknown'),
-              $store.wilds.previewText,
-              'External commands: ' + ($store.wilds.tcs.lockedOut === true ? 'locked out'
-                  : $store.wilds.tcs.lockedOut === false ? 'accepted' : 'unknown'),
-          ].join('\n')">
-        <i class="bi bi-broadcast me-1"></i>
-        <span x-text="$store.wilds.tcs.stale ? 'TCS: unknown'
-                    : $store.wilds.tcs.lockedOut ? 'TCS: locked out'
-                    : $store.wilds.tcs.preview === false ? 'TCS: Preview off' : 'TCS: Preview on'"></span>
-    </span>
-</div>
+{# TCS access on every page, for every session (plan §3.12). #}
+{% include "components/pill.html" with view="$store.wilds.tcsView" label="TCS" icon="bi-broadcast" %}

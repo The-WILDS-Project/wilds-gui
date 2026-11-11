@@ -24,14 +24,15 @@
             <div class="ui-title">{% block heading %}WILDS{% endblock %}</div>
             {% block clocks %}{% include "components/clocks.html" with show_lt=True %}{% endblock %}
 
-            <div class="flex-grow-1 d-flex align-items-center justify-content-center gap-4">
+            <div class="flex-grow-1 d-flex align-items-center justify-content-center gap-2">
                 {% block control %}{% include "components/control_holder.html" %}{% endblock %}
                 {% block to_status %}{% include "components/to_status.html" %}{% endblock %}
                 {% include "components/tcs_access_badge.html" %}
                 {% include "components/wilds_status.html" %}
-                {% block session_badge %}{% include "components/session_badge.html" %}{% endblock %}
             </div>
 
+            {# The session sits outside the wrapping group, so it stays on the header's middle line. #}
+            {% block session_badge %}{% include "components/session_badge.html" %}{% endblock %}
             {% include "components/link_status.html" %}
             <button type="button" class="btn btn-sm btn-outline-secondary" onclick="uiToggleTheme()" title="Light / dark">
                 <i class="bi bi-circle-half"></i>

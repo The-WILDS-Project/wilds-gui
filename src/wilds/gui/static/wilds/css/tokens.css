@@ -80,3 +80,9 @@
 .text-severity-danger    { color: var(--ui-danger-text); }
 .text-severity-primary   { color: var(--ui-primary-text); }
 .text-severity-secondary { color: var(--ui-secondary-text); }
+
+/* The header's indicators (templates/components/pill.html): LABEL in capitals, value in lower case. */
+.ui-pill { white-space: nowrap; }
+.ui-pill .pill-label { text-transform: uppercase; letter-spacing: 0.05em; font-weight: 600; margin-left: 0.15em; }
+.ui-pill .pill-value { font-weight: 400; }
+button.ui-pill { cursor: pointer; }

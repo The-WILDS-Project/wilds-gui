@@ -7,3 +7,14 @@ html, body { margin: 0; background: #14171a; color: #d8dde2; font-family: system
 .viewer-main { padding: 0.5rem 0.75rem 1rem; }
 .viewer-bar[hidden] { display: none; }
 [data-embed] .viewer-main { padding: 0.25rem 0.5rem; }
+
+.viewer-main { position: relative; }
+.viewer-tools { display: flex; justify-content: flex-end; margin-bottom: 0.25rem; }
+.viewer-btn { background: #232a30; color: inherit; border: 1px solid #3a444c; border-radius: 0.25rem; padding: 0.15rem 0.6rem; font-size: 0.85rem; cursor: pointer; }
+.viewer-btn:hover { background: #2d363d; }
+/* The header covers the viewer until closed; it scrolls inside itself. */
+.viewer-header { position: absolute; inset: 0; z-index: 10000; display: flex; flex-direction: column; background: #14171a; }
+.viewer-header[hidden] { display: none; }
+.viewer-header-bar { display: flex; align-items: center; gap: 0.5rem; padding: 0.3rem 0.5rem; border-bottom: 1px solid #2b3238; }
+.viewer-header-bar input { flex: 1; min-width: 0; background: #0f1215; color: inherit; border: 1px solid #3a444c; border-radius: 0.25rem; padding: 0.1rem 0.4rem; }
+.viewer-header pre { flex: 1; margin: 0; padding: 0.5rem; overflow: auto; font-size: 0.8rem; line-height: 1.3; }

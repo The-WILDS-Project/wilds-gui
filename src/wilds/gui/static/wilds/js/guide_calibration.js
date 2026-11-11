@@ -1,9 +1,10 @@
 /*
  * The guide camera's dark and bias frames (Engineering → Calibration, plan §3.17).
  *
- * Taking them is a job on wilds-control (POST /guide-camera/calibration/frames): it closes the
- * shutter, takes N frames with the camera's own settings, puts the shutter back and files the
- * frames and their median in the active calibration session. Sessions are time-stamped folders on
+ * Taking them is a job on wilds-control (POST /guide-camera/calibration/frames): it takes N frames
+ * with the camera's own settings and files them and their median in the active calibration
+ * session. A dark needs the light path blocked, which the Telescope Operator does on request
+ * (/light-path: ask, wait for the TO's acknowledgement, take the darks, ask for the light back). Sessions are time-stamped folders on
  * the control machine; one is active, and any can be made active again. A stored image opens in
  * the JS9 viewer page. The job's progress comes in the status stream (jobs); the session list is
  * read again whenever a calibration job ends. All text goes in with x-text.
@@ -83,16 +84,29 @@ document.addEventListener("alpine:init", () => {
             const w = wilds();
             if (!session()?.holder) return "Only the session holding control can take frames";
             const parts = w.system?.components || {};
-            for (const name of ["guide-camera", "shutter"]) {
-                const c = parts[name];
-                if (c && !c.operational) return `${name} is not operational: ${(c.why_not_operational || []).join("; ")}`;
-            }
+            const camera = parts["guide-camera"];
+            if (camera && !camera.operational) return `guide-camera is not operational: ${(camera.why_not_operational || []).join("; ")}`;
             if (w.guide_camera?.streaming) return "Stop the video first";
             if (this.job) return "A calibration run is in progress";
+            if (this.kind === "dark" && this.lightState !== "blocked") return "A dark needs the light blocked: ask the TO to block it first";
             if (this.requireStable && w.guide_camera?.cooler?.state === "cooling") return "The sensor is still cooling to its setpoint";
             if (this.count < 1 || this.count > 200 || !Number.isInteger(this.count)) return "Frames: a whole number from 1 to 200";
             if (this.kind === "dark" && this.ownExposure && !(this.exposure >= 0.001 && this.exposure <= 60)) return "Exposure: 0.001 to 60 s";
             return "";
+        },
+
+        // -- the light path: ask the TO (plan §3.17) -----------------------------------------
+        get light() { return wilds().light_path; },
+        get lightState() { return this.light?.state ?? "unknown"; },
+        get lightPending() { return this.lightState === "block_requested" || this.lightState === "unblock_requested"; },
+        get whyNotAsk() {
+            if (!session()?.holder) return "Only the session holding control can ask the TO";
+            return "";
+        },
+        async asLight(path) {
+            this.error = null;
+            try { await api("POST", `/light-path/${path}`, {}); }
+            catch (e) { this.error = String(e.message || e); }
         },
 
         async take() {
@@ -140,7 +154,6 @@ document.addEventListener("alpine:init", () => {
 
         // -- entries -----------------------------------------------------------------------
         filePath(entry, name) { return `${ROOT}/sessions/${encodeURIComponent(this.chosen)}/entries/${entry.id}/${name}`; },
-        fileUrl(entry, name) { return `${base}${this.filePath(entry, name)}`; },
         viewUrl(entry, name) {
             const title = `${entry.id} ${name === "master.fits" ? "master" : name} (${this.chosen})`;
             return `/viewer/?path=${encodeURIComponent(this.filePath(entry, name))}&title=${encodeURIComponent(title)}`;

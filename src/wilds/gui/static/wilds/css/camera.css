@@ -11,10 +11,21 @@
     overflow-y: auto;
     background: var(--ui-sidebar-bg);
     border-left: 1px solid var(--ui-border);
-    transition: width 0.2s ease;
 }
 
-.camera-dock.dock-dock { width: 540px; }
+.camera-dock.dock-dock { width: 540px; }  /* the splitter overrides this inline */
+.camera-dock.dragging { transition: none; user-select: none; }
+
+/* The bar between the page and the dock; wider to grab than it looks. */
+.dock-splitter {
+    flex: 0 0 6px;
+    align-self: stretch;
+    cursor: col-resize;
+    touch-action: none;
+    background: transparent;
+    margin-right: -1px;
+}
+.dock-splitter:hover, .dock-splitter:focus-visible, .dock-splitter.dragging { background: var(--bs-primary, #0d6efd); opacity: 0.55; outline: 0; }
 .camera-dock.dock-thumb { width: 252px; }
 .camera-dock.dock-off { width: 48px; }
 

@@ -1,22 +1,4 @@
-{% comment %}
-This session's own control status in the topbar (Instrument Operator page): Requested, Granted
-or Refused, else "none". Who holds control now is in the tooltip.
-{% endcomment %}
-<div x-data class="d-flex align-items-center gap-2" x-show="$store.session.code">
-    <i class="bi bi-person-badge"></i>
-    <span>Control:</span>
-    <span class="badge"
-          :class="{ granted: 'ui-success', requested: 'ui-info', refused: 'ui-danger', none: 'ui-secondary' }[$store.session.controlStatus]"
-          x-text="{ granted: 'Granted', requested: 'Requested', refused: 'Refused', none: 'none' }[$store.session.controlStatus]
-                  + ($store.session.controlStatus === 'granted' && $store.session.engineering ? ' (engineering)' : '')"
-          x-tooltip="[
-              $store.wilds.control.holder
-                  ? 'Held by ' + $store.wilds.control.holder + ' [' + $store.wilds.control.holder_code + ']'
-                  : 'Nobody holds control',
-              $store.wilds.control.holder_info,   // where the holder comes from
-              $store.session.controlStatus === 'requested'
-                  ? 'Your request is waiting for the Telescope Operator' + ($store.wilds.to.online === false ? ' (offline)' : '') : '',
-              $store.session.controlStatus === 'refused'
-                  ? 'Refused' + ($store.session.refusalReason ? ': ' + $store.session.refusalReason : '') : '',
-          ].filter(Boolean).join('\n')"></span>
+{# This session's own control status in the topbar (Instrument Operator page): granted, requested, refused or none; who holds control now is in the tooltip. #}
+<div x-data x-show="$store.session.code">
+    {% include "components/pill.html" with view="$store.session.controlView" label="Control" icon="bi-person-badge" %}
 </div>

@@ -13,6 +13,7 @@ document.addEventListener("alpine:init", () => {
         jobs: [],                    // active jobs, then the last few finished (plan §3.14)
         guide_camera: null,          // {kind, streaming, exposing, settings, cooler, last_frame_id}; null until known
         system: null,                // WILDS as a whole: {opstate, operational, why_not_operational, components}; null until known
+        light_path: null,            // is light reaching WILDS: {state, since_ms, requested_by, note, refusal}; null until known
         conf_versions: {},           // {"component/slice": version}: an open settings form compares it with what it loaded
         lastUpdate: null,
         control: { holder: null, engineering: false, holder_code: null, holder_info: null },
@@ -41,6 +42,45 @@ document.addEventListener("alpine:init", () => {
             const names = (this.activities.wilds || []).map((a) => a.name);
             return names.includes("StartingUp") ? "starting up" : names.includes("ShuttingDown") ? "shutting down" : null;
         },
+        /** The header pills (static/wilds/js/status.js): {text, cls, tip}; text is a lower-case value. */
+        get controlView() {
+            const c = this.control;
+            if (!c.holder) return { text: "nobody", cls: "ui-secondary", tip: "Nobody holds control" };
+            const who = [c.holder, c.holder_code].filter(Boolean).join(" ");
+            return c.engineering
+                ? { text: `engineering · ${who}`, cls: "ui-warning", tip: c.holder_info || "" }
+                : { text: who, cls: "ui-info", tip: c.holder_info || "" };
+        },
+        get toView() {
+            const online = this.to.online;
+            return {
+                text: online === null ? "unknown" : online ? "online" : "offline",
+                cls: online === null ? "ui-secondary" : online ? "ui-success" : "ui-warning",
+                tip: online === null ? "Telescope Operator status unknown"
+                    : online ? "The Telescope Operator page is open"
+                    : "No Telescope Operator page is open; control requests wait for one",
+            };
+        },
+        get tcsView() {
+            const t = this.tcs;
+            const tip = [
+                `TCS state: ${t.state ?? "unknown"}`,
+                `Health: ${t.health ?? "unknown"}`,
+                `TCS user mode: ${t.accessMode ?? "unknown"}`,
+                this.previewText,
+                `External commands: ${t.lockedOut === true ? "locked out" : t.lockedOut === false ? "accepted" : "unknown"}`,
+            ].join("\n");
+            if (t.stale) return { text: "unknown", cls: "ui-secondary", tip };
+            if (t.lockedOut) return { text: "locked out", cls: "ui-danger", tip };
+            return t.preview === false ? { text: "preview off", cls: "ui-warning", tip } : { text: "preview on", cls: "ui-success", tip };
+        },
+        get serverView() {
+            const link = this.link;
+            return {
+                text: { ok: "ok", connecting: "connecting", offline: "offline" }[link] || link,
+                cls: { ok: "ui-success", connecting: "ui-warning", offline: "ui-danger" }[link] || "ui-secondary",
+            };
+        },
         /** What the header shows for WILDS: {text, cls, tip}. */
         get opView() {
             const sys = this.system;
@@ -56,6 +96,28 @@ document.addEventListener("alpine:init", () => {
                     : { text: label.startedup + ", not operational", cls: "ui-warning", tip };
             }
             return { text: label[sys.opstate] || sys.opstate, cls: "ui-secondary", tip };
+        },
+        /** What the header shows for the light path to WILDS (plan §3.17): {text, cls, tip, icon}. */
+        get lightView() {
+            const lp = this.light_path;
+            if (!lp) return { text: "unknown", cls: "ui-secondary", icon: "bi-brightness-alt-high", tip: "Light path not known yet" };
+            const minutes = this.time && lp.since_ms ? Math.max(0, Math.round((this.time.utc_ms - lp.since_ms) / 60000)) : 0;
+            const lines = [];
+            if (lp.requested_by) lines.push(`Asked by ${lp.requested_by}`);
+            if (lp.note) lines.push(`TO: ${lp.note}`);
+            if (lp.refusal) lines.push(`The TO could not: ${lp.refusal}`);
+            const tip = (extra) => [extra, ...lines].filter(Boolean).join("\n");
+            switch (lp.state) {
+                case "lit": return { text: "on", cls: "ui-success", icon: "bi-brightness-high", tip: tip("Light reaches WILDS") };
+                case "blocked":
+                    // A blocked instrument that nobody remembers is the risk: ask after a quarter of an hour.
+                    return minutes >= 15
+                        ? { text: `blocked ${minutes}m`, cls: "ui-warning", icon: "bi-moon", tip: tip("Still blocked: restore the light when the darks are done") }
+                        : { text: "blocked", cls: "ui-info", icon: "bi-moon", tip: tip("The TO has blocked the light to WILDS") };
+                case "block_requested": return { text: "block asked…", cls: "ui-info", icon: "bi-hourglass-split", tip: tip("Waiting for the TO to block the light") };
+                case "unblock_requested": return { text: "restore asked…", cls: "ui-info", icon: "bi-hourglass-split", tip: tip("Waiting for the TO to let the light in again") };
+                default: return { text: "unknown", cls: "ui-secondary", icon: "bi-brightness-alt-high", tip: tip("Nobody has said whether light reaches WILDS") };
+            }
         },
         get previewText() {
             if (this.tcs.preview === true) return "Preview on: targets need TO approval";

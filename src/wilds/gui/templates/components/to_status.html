@@ -1,13 +1,2 @@
 {# Is a Telescope Operator page open and unlocked? Pushed in the status stream (to.online). #}
-<div x-data class="d-flex align-items-center gap-2">
-    <span class="badge"
-          :class="$store.wilds.to.online === null ? 'ui-secondary'
-                : $store.wilds.to.online ? 'ui-success' : 'ui-warning'"
-          x-tooltip="$store.wilds.to.online === null ? 'Telescope Operator status unknown'
-                   : $store.wilds.to.online ? 'The Telescope Operator page is open'
-                   : 'No Telescope Operator page is open; control requests wait for one'">
-        <i class="bi bi-person-video3 me-1"></i>
-        <span x-text="'TO: ' + ($store.wilds.to.online === null ? 'unknown'
-                              : $store.wilds.to.online ? 'online' : 'offline')"></span>
-    </span>
-</div>
+{% include "components/pill.html" with view="$store.wilds.toView" label="TO" icon="bi-person-video3" %}
