@@ -588,7 +588,7 @@ def test_each_entry_has_a_discard_button_that_asks_first(client: Client) -> None
 
 def test_every_header_indicator_is_the_same_pill(client: Client) -> None:
     html = client.get("/eng/").content.decode()
-    for label in ("Control", "TO", "TCS", "WILDS", "Light"):
+    for label in ("Control", "TO", "TCS", "Mode", "WILDS", "Light"):
         assert f'<span class="pill-label">{label}:</span>' in html, label
     assert 'class="badge ui-pill' in html and 'pill-label">Server:' in html
     css = Path(finders.find("wilds/css/tokens.css")).read_text()
