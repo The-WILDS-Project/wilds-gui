@@ -24,6 +24,7 @@ document.addEventListener("alpine:init", () => {
         pick: false,          // the next click on the image picks a star to put on the slit
         pickMark: null,       // where it was picked: {x, y} in image pixels
         pickHandler: null,    // called with (east_arcsec, north_arcsec) when a star is picked
+        detected: null,       // the last optics calibration (Engineering → Calibration → Slit), or null
 
         async load() {
             try {
@@ -37,12 +38,56 @@ document.addEventListener("alpine:init", () => {
         get calOk() {
             const c = this.cal;
             if (!c) return false;
-            return ["plate_scale_arcsec_px", "slit_pixel_x", "slit_pixel_y", "orientation_deg", "parity", "slit_length_arcsec", "slit_width_arcsec"]
-                .every((k) => c[k] !== null && c[k] !== undefined);
+            return ["plate_scale_arcsec_px", "slit_pixel_x", "slit_pixel_y", "orientation_deg", "parity", "slit_length_arcsec"]
+                .every((k) => c[k] !== null && c[k] !== undefined) && this.slitWidth !== null;
+        },
+        /** The slit's gap now, in arcsec: the stage's own width when it is known (the stage moves; the
+         *  calibration is measured at one width), else the calibration's. */
+        get slitWidth() {
+            const live = Alpine.store("wilds").slit?.width_arcsec;
+            if (live !== null && live !== undefined && live > 0) return live;
+            const c = this.cal?.slit_width_arcsec;
+            return c === null || c === undefined ? null : c;
+        },
+        /** How far the slit, as measured, points from where the rotator puts north at PA 0, in degrees
+         *  counter-clockwise (0 when the slit angle has not been measured). The slit and the camera
+         *  turn together, so it is the same at every PA. */
+        get zeroError() {
+            const c = this.cal;
+            if (!c || c.slit_angle_deg === null || c.slit_angle_deg === undefined || c.orientation_deg === null) return 0;
+            return ((c.slit_angle_deg - c.orientation_deg + 90) % 180 + 180) % 180 - 90;
         },
         /** What is missing, for the panels to say, or "". */
         get calWhy() {
-            return this.calOk ? "" : "The slit overlay needs the guide camera's calibration: plate scale, slit pixel, orientation, parity and slit size (Engineering → Configuration)";
+            return this.calOk ? "" : "The slit overlay needs the guide camera's calibration: plate scale, slit pixel, orientation, parity and slit length (Engineering → Calibration → Slit)";
+        },
+        /** The corners of the slit found by the optics calibration, in the pixels of a frame taken with
+         *  ``binning`` (and no window): the calibration is in unbinned sensor pixels. [[x, y] ...] as
+         *  array indices, i.e. a pixel's centre is its index. */
+        perimeter(d, binning = d.binning || 1) {
+            const a = rad(d.slit_angle_deg), L = d.slit_length_px / 2, W = d.slit_width_px / 2;
+            const u = [-Math.sin(a), -Math.cos(a)], v = [Math.cos(a), -Math.sin(a)];
+            const shift = (binning - 1) / 2;
+            return [[1, 1], [1, -1], [-1, -1], [-1, 1]].map(([i, j]) => [
+                (d.slit_x + i * L * u[0] + j * W * v[0] - shift) / binning,
+                (d.slit_y + i * L * u[1] + j * W * v[1] - shift) / binning,
+            ]);
+        },
+        /** What the dock draws for the detected slit, or null: only on the frame it was found in (the
+         *  stage has moved since, so on any other frame the gap is somewhere else). */
+        get detectedView() {
+            const d = this.detected, cam = Alpine.store("camera"), m = cam?.meta;
+            if (!d || !m || cam.view || !cam.url || m.id !== d.open_frame_id || m.roi) return null;
+            const pts = this.perimeter(d, m.binning || 1);
+            const top = pts.reduce((a, b) => (b[1] < a[1] ? b : a));
+            const { z } = cam.xf;
+            return {
+                vb: `0 0 ${m.width} ${m.height}`,
+                points: pts.map(([x, y]) => `${(x + 0.5).toFixed(2)},${(y + 0.5).toFixed(2)}`).join(" "),
+                stroke: Math.max(1.5, m.width * 0.0025) / z,
+                font: Math.max(14, m.width * 0.022) / z,
+                lx: top[0] + 0.5, ly: top[1] + 0.5,
+            };
         },
         get show() {
             const cam = Alpine.store("camera");
@@ -68,7 +113,7 @@ document.addEventListener("alpine:init", () => {
                 w: m.width, h: m.height, arc,
                 cx: (c.slit_pixel_x - (m.roi ? m.roi.x : 0)) / b,
                 cy: (c.slit_pixel_y - (m.roi ? m.roi.y : 0)) / b,
-                len: c.slit_length_arcsec / arc, wid: c.slit_width_arcsec / arc,
+                len: c.slit_length_arcsec / arc, wid: this.slitWidth / arc,
             };
         },
         /** Unit vector of the slit's long axis for a sky PA, in the image. */
@@ -95,7 +140,7 @@ document.addEventListener("alpine:init", () => {
             const g = this.geo;
             if (!g) return EMPTY;
             const { z, tx, ty } = Alpine.store("camera").xf;  // marks keep their size on screen when zoomed
-            const slit = (pa) => ({ x: g.cx - g.wid / 2, y: g.cy - g.len / 2, w: g.wid, h: g.len, t: `rotate(${this.angle(pa).toFixed(2)} ${g.cx} ${g.cy})` });
+            const slit = (pa) => ({ x: g.cx - g.wid / 2, y: g.cy - g.len / 2, w: g.wid, h: g.len, t: `rotate(${(this.angle(pa) - this.zeroError).toFixed(2)} ${g.cx} ${g.cy})` });
             const d = this.dir(this.shownPa);
             const reach = g.len / 2 + Math.max(14, g.w * 0.02) / z;
             const arm = (Math.min(g.w, g.h) * 0.07) / z;

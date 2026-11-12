@@ -89,14 +89,14 @@ document.addEventListener("alpine:init", () => {
 
         /** Show a file on wilds-control (a path) in the dock's viewer instead of the video.
          *  ``open`` brings the dock up even if it is hidden or small (a click asked for it). */
-        show(path, title, { open = false, size = null } = {}) {
+        show(path, title, { open = false, size = null, perimeter = null } = {}) {
             if (!path || !path.startsWith("/") || path.startsWith("//")) return;
             // The viewer sizes JS9 to the frame it is shown in; a frame that is hidden at the
             // moment it loads measures nothing, so the dock says how big it will be.
             const box = document.querySelector(".dock-view");
             const w = size?.w || (box && box.clientWidth) || 516;
             const h = size?.h || (box && box.clientHeight) || 480;
-            const src = `/viewer/?embed=1&w=${w}&h=${h}&path=${encodeURIComponent(path)}&title=${encodeURIComponent(title || "")}`;
+            const src = `/viewer/?embed=1&w=${w}&h=${h}&path=${encodeURIComponent(path)}&title=${encodeURIComponent(title || "")}${perimeter ? `&perimeter=${encodeURIComponent(perimeter)}` : ""}`;
             if (this.view?.src !== src) this.view = { title: title || path, src, path };
             if (open && this.size !== "dock") this.setSize("dock");
         },

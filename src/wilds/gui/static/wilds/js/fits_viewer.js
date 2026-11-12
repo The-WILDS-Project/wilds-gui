@@ -6,6 +6,8 @@
  * page cannot be pointed at another site). ?title= is shown, as text, in the bar and the tab.
  * ?embed=1 is the page inside the camera dock: no title bar, sized to the frame it is in (&w= and
  * &h= give that size; without them the window's).
+ * ?perimeter=x1,y1,...,x4,y4 draws a polygon through those corners (array indices of the image, as
+ * the slit calibration gives them) in cyan: the slit it found in this frame.
  * JS9.Preload queues the image before JS9 starts; a dark or bias gets the zscale stretch that
  * shows its structure.
  */
@@ -67,5 +69,13 @@
     document.getElementById("viewer-header-close").addEventListener("click", () => { panel.hidden = true; });
     find.addEventListener("input", draw);
     document.addEventListener("keydown", (e) => { if (e.key === "Escape") panel.hidden = true; });
-    JS9.Preload(`${base}${path}`, { scaleclipping: "zscale", colormap: "grey", scale: "linear", zoom: "tofit" });
+    // the corners, as JS9 image coordinates (1-based: the first array index is pixel 1)
+    const nums = (params.get("perimeter") || "").split(",").map(Number);
+    const corners = nums.length === 8 && nums.every(Number.isFinite)
+        ? [0, 2, 4, 6].map((i) => ({ x: nums[i] + 1, y: nums[i + 1] + 1 })) : null;
+    const drawPerimeter = (im) => {
+        if (!corners) return;
+        JS9.AddRegions("polygon", { pts: corners, color: "#00e5ff", movable: false, removable: false, rotatable: false }, im ? { display: im } : undefined);
+    };
+    JS9.Preload(`${base}${path}`, { scaleclipping: "zscale", colormap: "grey", scale: "linear", zoom: "tofit", onload: drawPerimeter });
 })();
