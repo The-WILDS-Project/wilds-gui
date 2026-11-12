@@ -1,0 +1,38 @@
+{% comment %}
+The slit stage by hand (plan §3.3, static/wilds/js/optics_calibration.js): where it is, in mm and as
+the gap on the sky, and a move to a preset (closed: no light through; open: the stage's full travel)
+or to a width. Moving needs control; a calibration run has the stage to itself.
+{% endcomment %}
+<div x-data="slitStage()">
+    <div class="alert alert-danger py-2" role="alert" x-show="error">
+        <i class="bi bi-exclamation-octagon me-2"></i><span x-text="error"></span>
+    </div>
+    <div class="d-flex flex-wrap align-items-center gap-3 mb-2">
+        <div>
+            <div class="form-label small mb-0">Slit stage</div>
+            <div><strong x-text="positionText"></strong>
+                <span class="text-body-secondary" x-show="widthText"> · gap <span x-text="widthText"></span></span></div>
+            <div class="small text-body-secondary">at <span x-text="presetText"></span></div>
+        </div>
+        <div class="btn-group btn-group-sm" role="group" aria-label="Slit presets">
+            <span :class="whyNot ? 'ui-unavailable' : ''" x-tooltip="whyNot">
+                <button type="button" class="btn btn-outline-secondary rounded-end-0" :disabled="!!whyNot || busy" @click="preset('closed')">Closed</button>
+            </span>
+            <span :class="whyNot ? 'ui-unavailable' : ''" x-tooltip="whyNot">
+                <button type="button" class="btn btn-outline-secondary rounded-start-0" :disabled="!!whyNot || busy" @click="preset('open')">Open</button>
+            </span>
+        </div>
+        <div class="d-flex align-items-end gap-2">
+            <div>
+                <label class="form-label small mb-1" for="ss-width">Gap</label>
+                <div class="input-group input-group-sm" style="width: 9rem;">
+                    <input id="ss-width" type="number" class="form-control" min="0" step="any" x-model.number="width" aria-label="Gap in arcseconds">
+                    <span class="input-group-text">arcsec</span>
+                </div>
+            </div>
+            <span :class="whyNotWidth ? 'ui-unavailable' : ''" x-tooltip="whyNotWidth">
+                <button type="button" class="btn btn-sm btn-outline-primary" :disabled="!!whyNotWidth || busy" @click="moveToWidth()">Move</button>
+            </span>
+        </div>
+    </div>
+</div>

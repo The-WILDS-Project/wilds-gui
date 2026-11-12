@@ -13,6 +13,7 @@ document.addEventListener("alpine:init", () => {
         jobs: [],                    // active jobs, then the last few finished (plan §3.14)
         guide_camera: null,          // {kind, streaming, exposing, settings, cooler, last_frame_id}; null until known
         system: null,                // WILDS as a whole: {opstate, operational, why_not_operational, components}; null until known
+        slit: null,                  // {position_um, width_arcsec, preset, moving, min_um, max_um, um_per_arcsec, lifecycle}; null until known
         telescope: null,             // {kind, lifecycle, telemetry: {target, rot_pa, offsets, in_position, preview, pending, ...}}; null until known
         light_path: null,            // is light reaching WILDS: {state, since_ms, requested_by, note, refusal}; null until known
         conf_versions: {},           // {"component/slice": version}: an open settings form compares it with what it loaded

@@ -61,6 +61,13 @@ the dock as a thumbnail. Logic and the video socket: static/wilds/js/camera.js.
              @wheel.prevent="$store.camera.wheel($event)" @pointerdown="$store.camera.startPan($event)">
           <div class="dock-zoom" :style="$store.camera.zoomStyle">
             <img x-show="$store.camera.url" :src="$store.camera.url" alt="Guide camera frame">
+            {# The slit found by the optics calibration, on the frame it was found in. #}
+            <svg class="dock-overlay" x-data x-show="$store.slit.detectedView" :view-box.camel="$store.slit.detectedView?.vb" preserveAspectRatio="none"
+                 aria-label="Detected slit">
+                <polygon class="slit-detected" :points="$store.slit.detectedView?.points" :stroke-width="$store.slit.detectedView?.stroke"></polygon>
+                <text class="slit-label slit-detected-label" :x="$store.slit.detectedView?.lx" :y="$store.slit.detectedView?.ly"
+                      :font-size="$store.slit.detectedView?.font" text-anchor="middle" dy="-0.5em">detected slit</text>
+            </svg>
             {# The slit overlay (static/wilds/js/slit.js): drawn in the frame's own pixels, over the image. #}
             <svg class="dock-overlay" x-data x-show="$store.slit.show" :view-box.camel="$store.slit.v.vb" preserveAspectRatio="none"
                  :class="{ picking: $store.slit.pick }" aria-label="Slit overlay">

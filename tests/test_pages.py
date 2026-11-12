@@ -80,6 +80,7 @@ def test_ui_js_never_inserts_html() -> None:
         "camera.js",
         "config.js",
         "guide_calibration.js",
+        "optics_calibration.js",
         "fits_viewer.js",
         "acquisition.js",
         "slit.js",
@@ -328,8 +329,16 @@ def test_eng_pages_have_their_own_content(client: Client) -> None:
     cal = client.get("/eng/calibration/").content.decode()
     cfg = client.get("/eng/configuration/").content.decode()
     assert "Archon VIS" in mon and "cal_lamps" not in mon and "cfg_slit" not in mon
-    for action in ("lamps", "slit", "adc", "focus", "bias", "dark", "flat"):
+    for action in (
+        "lamps",
+        "adc",
+        "focus",
+        "bias",
+        "dark",
+        "flat",
+    ):  # the slit tab is a real panel now
         assert f"$store.wilds.action('cal_{action}')" in cal
+    assert "cal_slit" not in cal
     assert "cal_lamps" not in cfg and "Archon VIS" not in cal
     # the placeholder buttons gave way to the generic settings form
     assert "cfg_" not in cfg
@@ -507,7 +516,9 @@ def test_the_dock_has_a_splitter_that_keeps_its_width(client: Client) -> None:
     assert "wilds-camera-width" in script and "setPointerCapture" in script
 
 
-def test_every_page_shows_the_light_pill_and_the_calibration_card_asks_the_to(client: Client) -> None:
+def test_every_page_shows_the_light_pill_and_the_calibration_card_asks_the_to(
+    client: Client,
+) -> None:
     for url in ("/eng/calibration/", "/to/"):
         assert "lightView" in client.get(url).content.decode(), url
     card = client.get("/eng/calibration/").content.decode()
@@ -530,6 +541,43 @@ def test_the_calibration_page_has_the_guide_camera_card(client: Client) -> None:
     assert 'x-data="guideCalibration()"' in page and "wilds/js/guide_calibration.js" in page
     assert "Take " in page and "Calibration sessions" in page
     assert "guideCalibration" not in client.get("/eng/monitoring/").content.decode()
+
+
+def test_the_slit_tab_has_the_stage_and_the_optics_calibration(client: Client) -> None:
+    page = client.get("/eng/calibration/").content.decode()
+    assert 'x-data="slitStage()"' in page and 'x-data="opticsCalibration()"' in page
+    assert "wilds/js/optics_calibration.js" in page
+    assert "Apply to the calibration" in page and "Measuring gap" in page
+    assert "Closed-slit frame" in page and "Open-slit frame" in page
+    script = Path(finders.find("wilds/js/optics_calibration.js")).read_text()
+    for path in (
+        "/calibration/optics",
+        "/calibration/optics/apply",
+        "/calibration/optics/last",
+        "/slit/move",
+    ):
+        assert path in script
+    assert "opticsCalibration" not in client.get("/eng/monitoring/").content.decode()
+
+
+def test_the_overlay_follows_the_stages_width_and_the_measured_slit_angle() -> None:
+    script = Path(finders.find("wilds/js/slit.js")).read_text()
+    assert "slit?.width_arcsec" in script and "slit_angle_deg" in script and "zeroError" in script
+
+
+def test_the_dock_and_the_viewer_draw_the_detected_slit(client: Client) -> None:
+    dock = client.get("/eng/calibration/").content.decode()
+    assert (
+        'aria-label="Detected slit"' in dock and "slit-detected" in dock and "detectedView" in dock
+    )
+    slit = Path(finders.find("wilds/js/slit.js")).read_text()
+    assert "open_frame_id" in slit and "perimeter(" in slit  # only on the frame it was found in
+    viewer = Path(finders.find("wilds/js/fits_viewer.js")).read_text()
+    assert 'params.get("perimeter")' in viewer and "AddRegions" in viewer
+    cam = Path(finders.find("wilds/js/camera.js")).read_text()
+    assert "perimeter" in cam and "&perimeter=" in cam
+    calib = Path(finders.find("wilds/js/optics_calibration.js")).read_text()
+    assert 'Alpine.store("slit").detected' in calib
 
 
 def test_the_dock_can_open_the_latest_frame_in_the_viewer(client: Client) -> None:
@@ -595,9 +643,16 @@ def test_every_header_indicator_is_the_same_pill(client: Client) -> None:
     assert "text-transform: uppercase" in css
 
 
-def test_the_operations_page_has_a_tab_per_operation_with_test_for_development(client: Client) -> None:
+def test_the_operations_page_has_a_tab_per_operation_with_test_for_development(
+    client: Client,
+) -> None:
     page = client.get("/io/operations/").content.decode()
-    for tab in ("'acquisition', 'Acquisition'", "'focus', 'Focus'", "'guiding', 'Guiding'", "'test', 'Test'"):
+    for tab in (
+        "'acquisition', 'Acquisition'",
+        "'focus', 'Focus'",
+        "'guiding', 'Guiding'",
+        "'test', 'Test'",
+    ):
         assert tab in page, tab
     assert "wilds-ops-tab" in page and "opmode === 'development'" in page
     assert "Test job" in page  # inside the Test tab
@@ -617,29 +672,54 @@ def test_the_acquisition_tab_has_the_target_entry_and_the_slew(client: Client) -
     assert "acquisitionTarget" not in client.get("/io/products/").content.decode()
 
 
-def test_the_acquisition_tab_adjusts_offsets_and_rotation_with_the_slit_overlay(client: Client) -> None:
+def test_the_acquisition_tab_adjusts_offsets_and_rotation_with_the_slit_overlay(
+    client: Client,
+) -> None:
     page = client.get("/io/operations/").content.decode()
-    for part in ('x-data="acquisitionOffsets()"', 'x-data="acquisitionRotation()"', "Adjust offsets", "Adjust rotation", "Start acquisition"):
+    for part in (
+        'x-data="acquisitionOffsets()"',
+        'x-data="acquisitionRotation()"',
+        "Adjust offsets",
+        "Adjust rotation",
+        "Start acquisition",
+    ):
         assert part in page, part
     assert "$store.slit.active = shown === 'acquisition'" in page
     dock = client.get("/io/operations/").content.decode()
-    assert "wilds/js/slit.js" in dock and 'class="dock-overlay"' in dock and ":view-box.camel" in dock
+    assert (
+        "wilds/js/slit.js" in dock and 'class="dock-overlay"' in dock and ":view-box.camel" in dock
+    )
     script = Path(finders.find("wilds/js/acquisition.js")).read_text()
-    assert "/telescope/offset" in script and "/telescope/rotator" in script and "/telescope/offset/absorb" in script
+    assert (
+        "/telescope/offset" in script
+        and "/telescope/rotator" in script
+        and "/telescope/offset/absorb" in script
+    )
     slit = Path(finders.find("wilds/js/slit.js")).read_text()
     assert "/config/guide-camera/cal" in slit and "setPointerCapture" in slit
 
 
 def test_the_to_page_shows_what_waits_for_the_to(client: Client) -> None:
     page = client.get("/to/").content.decode()
-    assert "answerPending(true)" in page and "answerPending(false)" in page and "pending.detail" in page
+    assert (
+        "answerPending(true)" in page
+        and "answerPending(false)" in page
+        and "pending.detail" in page
+    )
     script = Path(finders.find("wilds/js/to.js")).read_text()
     assert "/dev/telescope/" in script and "telemetry?.pending" in script
 
 
 def test_the_live_view_can_be_zoomed_and_panned(client: Client) -> None:
     dock = client.get("/io/operations/").content.decode()
-    for part in ('class="dock-zoombar"', 'class="dock-zoom"', "zoomToSlit()", "zoomReset()", "$store.camera.wheel($event)", "startPan($event)"):
+    for part in (
+        'class="dock-zoombar"',
+        'class="dock-zoom"',
+        "zoomToSlit()",
+        "zoomReset()",
+        "$store.camera.wheel($event)",
+        "startPan($event)",
+    ):
         assert part in dock, part
     script = Path(finders.find("wilds/js/camera.js")).read_text()
     assert "setZoom(" in script and "get zoomStyle()" in script

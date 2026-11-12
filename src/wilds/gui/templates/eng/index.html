@@ -5,7 +5,8 @@
 {% block sidebar %}{% include "components/sidebar.html" with pages=eng_pages url_name="eng_page" %}{% endblock %}
 {% block dock %}{% include "components/camera_dock.html" %}{% endblock %}
 {% block extra_js %}<script src="{% static 'wilds/js/config.js' %}?v={{ asset_version }}" defer></script>
-<script src="{% static 'wilds/js/guide_calibration.js' %}?v={{ asset_version }}" defer></script>{% endblock %}
+<script src="{% static 'wilds/js/guide_calibration.js' %}?v={{ asset_version }}" defer></script>
+<script src="{% static 'wilds/js/optics_calibration.js' %}?v={{ asset_version }}" defer></script>{% endblock %}
 {% block content %}
 {% comment %} Engineering mode (plan §3.11): the passphrase is checked by wilds-control, which gives this
    session the lease in engineering mode. No TO involvement; coordination is by Zoom or in person.
@@ -82,9 +83,10 @@
                 </div>
             </div>
             <div x-show="tab === 'slit'">
-                <div class="d-flex flex-wrap gap-2">
-                    {% include "components/action_button.html" with action="cal_slit" label="Slit" style="outline-primary" %}
-                </div>
+                <p class="text-body-secondary small">The slit stage, and the calibration of the guide camera and the slit from the sky: with the telescope on a star field, plate solve a frame with the slit closed, then find the slit in a second frame with it open. Watch both frames in the guide-camera dock.</p>
+                <div class="card mb-3"><div class="card-body py-2">{% include "components/slit_stage.html" %}</div></div>
+                <h6 class="mb-2">Guide camera and slit calibration</h6>
+                {% include "components/optics_calibration.html" %}
             </div>
             <div x-show="tab === 'adc'">
                 <div class="d-flex flex-wrap gap-2">
