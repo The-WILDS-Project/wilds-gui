@@ -8,7 +8,7 @@
 document.addEventListener("alpine:init", () => {
     Alpine.store("wilds", {
         link: "connecting",          // connecting | ok | offline
-        opmode: "development",       // development | production (config.toml): dev-only helpers show in development
+        opmode: "development",       // development | ldt-simulated | ldt-production (config.toml): dev-only helpers show in development
         activities: {},              // {component: [{name, since_ms, details}]}, running only (plan §3.13)
         jobs: [],                    // active jobs, then the last few finished (plan §3.14)
         guide_camera: null,          // {kind, streaming, exposing, settings, cooler, last_frame_id}; null until known
@@ -42,6 +42,14 @@ document.addEventListener("alpine:init", () => {
         get busyWith() {
             const names = (this.activities.wilds || []).map((a) => a.name);
             return names.includes("StartingUp") ? "starting up" : names.includes("ShuttingDown") ? "shutting down" : null;
+        },
+        /** What WILDS runs against (config.toml opmode): in-process simulators, LDT's simulators, or the telescope. */
+        get modeView() {
+            return {
+                development: { text: "development", cls: "ui-secondary", tip: "In-process simulators on this machine; the /dev helpers are available" },
+                "ldt-simulated": { text: "ldt-simulated", cls: "ui-info", tip: "LDT's simulators (nysa) through the test broker (tanagra)" },
+                "ldt-production": { text: "ldt-production", cls: "ui-success", tip: "The real telescope, through its own broker" },
+            }[this.opmode] || { text: String(this.opmode), cls: "ui-secondary", tip: "" };
         },
         /** The header pills (static/wilds/js/status.js): {text, cls, tip}; text is a lower-case value. */
         get controlView() {
