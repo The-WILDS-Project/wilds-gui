@@ -14,7 +14,7 @@ document.addEventListener("alpine:init", () => {
         guide_camera: null,          // {kind, streaming, exposing, settings, cooler, last_frame_id}; null until known
         system: null,                // WILDS as a whole: {opstate, operational, why_not_operational, components}; null until known
         slit: null,                  // {position_um, width_arcsec, preset, moving, min_um, max_um, um_per_arcsec, lifecycle}; null until known
-        telescope: null,             // {kind, lifecycle, telemetry: {target, rot_pa, offsets, in_position, preview, pending, ...}}; null until known
+        telescope: null,             // {kind, lifecycle, telemetry: {target, rot_pa, offsets, in_position, accepts_commands, ...}}; null until known
         light_path: null,            // is light reaching WILDS: {state, since_ms, requested_by, note, refusal}; null until known
         conf_versions: {},           // {"component/slice": version}: an open settings form compares it with what it loaded
         lastUpdate: null,
@@ -26,8 +26,7 @@ document.addEventListener("alpine:init", () => {
             state: null,             // TCSTcsStatusSV
             health: null,
             accessMode: null,        // Operator | Engineer (TCS GUI login, not a lockout)
-            preview: null,           // externalTargetCfgCmdPreviewIsTrue
-            lockedOut: null,         // field to be identified (plan §5)
+            acceptsCommands: null,   // false: the TCS holds external commands instead of acting (its External Command Preview is on)
             stale: true,
         },
         actions: {},                 // {"slew": {"ok": false, "why": "…"}, …} (plan §3.12)
@@ -47,7 +46,7 @@ document.addEventListener("alpine:init", () => {
         /** What WILDS runs against (config.toml opmode): in-process simulators, LDT's simulators, or the telescope. */
         get modeView() {
             return {
-                development: { text: "development", cls: "ui-secondary", tip: "In-process simulators on this machine; the /dev helpers are available" },
+                development: { text: "development", cls: "ui-warning", tip: "In-process simulators on this machine; the /dev helpers are available" },
                 "ldt-simulated": { text: "ldt-simulated", cls: "ui-info", tip: "LDT's simulators (nysa) through the test broker (tanagra)" },
                 "ldt-production": { text: "ldt-production", cls: "ui-success", tip: "The real telescope, through its own broker" },
             }[this.opmode] || { text: String(this.opmode), cls: "ui-secondary", tip: "" };
@@ -71,18 +70,28 @@ document.addEventListener("alpine:init", () => {
                     : "No Telescope Operator page is open; control requests wait for one",
             };
         },
+        /** Does the TCS accept external commands? While its External Command Preview is on
+         *  (externalTargetCfgCmdPreviewIsTrue) it holds an external target instead of acting on
+         *  it: "rejects"; with it off it acts on what it is sent, nobody approving: "accepts". The
+         *  simulated telescope of the development mode always accepts. */
+        get tcsAccepts() {
+            if (this.opmode === "development") return true;
+            if (this.tcs.stale || this.tcs.acceptsCommands === null || this.tcs.acceptsCommands === undefined) return null;
+            return this.tcs.acceptsCommands;
+        },
         get tcsView() {
             const t = this.tcs;
+            const accepts = this.tcsAccepts;
             const tip = [
                 `TCS state: ${t.state ?? "unknown"}`,
                 `Health: ${t.health ?? "unknown"}`,
                 `TCS user mode: ${t.accessMode ?? "unknown"}`,
-                this.previewText,
-                `External commands: ${t.lockedOut === true ? "locked out" : t.lockedOut === false ? "accepted" : "unknown"}`,
+                this.tcsText,
             ].join("\n");
-            if (t.stale) return { text: "unknown", cls: "ui-secondary", tip };
-            if (t.lockedOut) return { text: "locked out", cls: "ui-danger", tip };
-            return t.preview === false ? { text: "preview off", cls: "ui-warning", tip } : { text: "preview on", cls: "ui-success", tip };
+            if (accepts === null) return { text: "unknown", cls: "ui-secondary", tip };
+            return accepts
+                ? { text: "accepting cmds", cls: "ui-success", tip }
+                : { text: "rejecting cmds", cls: "ui-danger", tip };
         },
         get serverView() {
             const link = this.link;
@@ -129,10 +138,11 @@ document.addEventListener("alpine:init", () => {
                 default: return { text: "unknown", cls: "ui-secondary", icon: "bi-brightness-alt-high", tip: tip("Nobody has said whether light reaches WILDS") };
             }
         },
-        get previewText() {
-            if (this.tcs.preview === true) return "Preview on: targets need TO approval";
-            if (this.tcs.preview === false) return "Preview off: targets slew immediately";
-            return "Preview unknown: assume TO approval is needed";
+        get tcsText() {
+            const accepts = this.tcsAccepts;
+            if (accepts === true) return "External commands are accepted: the telescope acts on what WILDS sends";
+            if (accepts === false) return "External commands are rejected: the TCS is not taking commands from WILDS (the Telescope Operator switches that in the TCS)";
+            return "Whether the TCS accepts external commands is not known";
         },
     });
 

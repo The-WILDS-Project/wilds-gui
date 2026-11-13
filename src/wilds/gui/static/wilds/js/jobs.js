@@ -97,7 +97,12 @@ document.addEventListener("alpine:init", () => {
                 barList.forEach((b, i) => { b.row = i + 2; });
                 this.barRows = barList.length;
                 this.bars = barList.map((b) => ({ ...b }));
+                // Back-to-back exposures are one activity each: the one that just ended is still
+                // fading out when the next starts. Two pills of the same name side by side read as
+                // two things happening, so the fading one goes at once.
+                const live = new Set([...pills.values()].filter((p) => !p.leaving).map((p) => `${p.component}|${p.name}`));
                 this.pills = [...pills.values()]
+                    .filter((p) => !(p.leaving && live.has(`${p.component}|${p.name}`)))
                     .sort((a, b) => a.since_ms - b.since_ms || a.name.localeCompare(b.name))
                     .map((p) => ({ ...p }));
             };

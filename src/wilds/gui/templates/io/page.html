@@ -25,7 +25,8 @@
     <div class="d-flex align-items-center gap-2">
         <span x-data class="text-body-secondary small" x-show="$store.session.code">
             Session code:
-            <strong x-text="$store.session.code" x-tooltip="$store.session.provenance" style="cursor: help;"></strong>
+            <strong x-text="$store.session.code"></strong>
+            {% include "components/info.html" with tip="$store.session.provenance" %}
         </span>
         <span x-data x-show="$store.session.requested && !$store.session.holder" class="badge ui-info">Control requested</span>
         {# Hidden once control is granted: there is nothing left to request. #}
@@ -55,7 +56,7 @@
                },
                get shown() { return this.tabs.some((t) => t[0] === this.tab) ? this.tab : 'acquisition'; },
                pick(t) { this.tab = t; try { localStorage.setItem('wilds-ops-tab', t); } catch { /* private mode */ } } }">
-    <ul class="nav nav-tabs flex-nowrap overflow-x-auto mb-3" role="tablist">
+    <ul class="nav nav-tabs mb-3" role="tablist">
         <template x-for="t in tabs" :key="t[0]">
             <li class="nav-item" role="presentation">
                 <button type="button" class="nav-link" role="tab" :class="t[0] === shown ? 'active' : ''" :aria-selected="t[0] === shown"
@@ -115,7 +116,7 @@
                             <button type="button" class="btn btn-primary" :disabled="!!whyNot || sending" @click="slew()">
                                 <i class="bi bi-send me-1"></i><span x-text="label"></span></button>
                         </span>
-                        <span class="small text-body-secondary" x-text="$store.wilds.previewText"></span>
+                        <span class="small text-body-secondary" x-text="$store.wilds.tcsText"></span>
                     </div>
                 </div>
 
@@ -144,7 +145,7 @@
             <div class="card-header"><i class="bi bi-arrows-move me-2"></i>Adjust offsets</div>
             <div class="card-body">
                 <p class="small text-body-secondary mb-2">
-                    Moves the telescope's pointing (the Handset offset), by arrows or by picking a star on the live
+                    Moves the telescope's pointing (the Handset offset), by arrows or by picking a point on the live
                     view to put on the slit. Nothing is sent until <em>Apply</em>.
                 </p>
                 <div class="row mb-2 align-items-center">
@@ -174,7 +175,7 @@
                         </div>
                         <span :class="whyPick ? 'ui-unavailable' : ''" x-tooltip="whyPick">
                             <button type="button" class="btn btn-sm" :class="$store.slit.pick ? 'btn-warning' : 'btn-outline-secondary'" :disabled="!!whyPick" @click="togglePick()">
-                                <i class="bi bi-bullseye me-1"></i><span x-text="$store.slit.pick ? 'Click a star…' : 'Pick a star on the view'"></span></button>
+                                <i class="bi bi-bullseye me-1"></i><span x-text="$store.slit.pick ? 'Click a point…' : 'Pick point on the view'"></span></button>
                         </span>
                     </div>
                 </div>
@@ -186,7 +187,8 @@
                         <button type="button" class="btn btn-outline-secondary" :disabled="!pending && !$store.slit.pickMark" @click="reset()">Reset</button>
                         <span :class="whyNot ? 'ui-unavailable' : ''" x-tooltip="whyNot">
                             <button type="button" class="btn btn-outline-secondary" :disabled="!!whyNot || sending" @click="clear()">Clear offset</button></span>
-                        <span :class="whyNot ? 'ui-unavailable' : ''" x-tooltip="whyNot">
+                        <span :class="whyNot ? 'ui-unavailable' : ''"
+                              x-tooltip="whyNot || 'Make the offset part of the target\'s coordinates and clear the offset: the telescope stays where it is, and Clear no longer takes you back to the original coordinates'">
                             <button type="button" class="btn btn-outline-secondary" :disabled="!!whyNot || sending" @click="absorb()">Absorb</button></span>
                     </div>
                 </div>
@@ -243,6 +245,54 @@
                 </div>
                 <div class="row" x-show="outcome"><div class="col-3"></div>
                     <div class="col-9"><span class="badge" :class="outcome?.cls" x-text="outcome?.text"></span></div></div>
+                <div class="alert alert-danger py-2 mt-2 mb-0" role="alert" x-show="error">
+                    <i class="bi bi-exclamation-octagon me-2"></i><span x-text="error"></span></div>
+            </div>
+        </div>
+
+        <div class="card mb-3" x-data="acquisitionSlit()">
+            <div class="card-header"><i class="bi bi-distribute-horizontal me-2"></i>Slit</div>
+            <div class="card-body">
+                <p class="small text-body-secondary mb-2">
+                    The slit stage's opening. Set the slider (or type microns or arcsec); nothing moves until <em>Apply</em>.
+                </p>
+                <div class="row mb-2 align-items-center">
+                    <div class="col-3 fw-bold text-end">Opening now</div>
+                    <div class="col-9">
+                        <code x-text="nowText"></code>
+                        <span class="small text-body-secondary ms-2" x-text="presetText"></span>
+                        <div class="progress mt-1" style="max-width: 18rem; height: 0.4rem;" role="progressbar" aria-label="Slit opening, percent of travel">
+                            <div class="progress-bar" :style="'width: ' + percentNow + '%'"></div></div>
+                    </div>
+                </div>
+                <div class="row mb-2 align-items-center">
+                    <label class="col-3 fw-bold text-end" for="slit-slider">New opening</label>
+                    <div class="col-9">
+                        <input id="slit-slider" type="range" class="form-range" :min="minUm" :max="maxUm" step="1"
+                               :value="um" @input="setUm($event.target.value)" aria-label="Slit opening in microns">
+                        <div class="d-flex justify-content-between small text-body-secondary">
+                            <span>closed</span><span>open (<span x-text="Math.round(maxUm)"></span> µm, <span x-text="(maxUm / perArcsec).toFixed(0)"></span> arcsec)</span></div>
+                    </div>
+                </div>
+                <div class="row mb-2 align-items-center">
+                    <div class="col-3"></div>
+                    <div class="col-9 d-flex flex-wrap align-items-center gap-2">
+                        <div class="input-group" style="width: 10rem;">
+                            <input type="number" min="0" step="any" class="form-control" :value="umText"
+                                   @input="setUm($event.target.value, 'um')" @blur="done()" aria-label="Opening in microns">
+                            <span class="input-group-text">µm</span>
+                        </div>
+                        <div class="input-group" style="width: 11rem;">
+                            <input type="number" min="0" step="any" class="form-control" :value="arcsecText"
+                                   @input="setArcsec($event.target.value)" @blur="done()" aria-label="Opening in arcseconds">
+                            <span class="input-group-text">arcsec</span>
+                        </div>
+                        <span :class="whyNot ? 'ui-unavailable' : ''" x-tooltip="whyNot">
+                            <button type="button" class="btn btn-primary" :disabled="!!whyNot || sending" @click="apply()">
+                                <i class="bi bi-check-lg me-1"></i>Apply</button></span>
+                        <button type="button" class="btn btn-outline-secondary" :disabled="!changed" @click="reset()">Reset</button>
+                    </div>
+                </div>
                 <div class="alert alert-danger py-2 mt-2 mb-0" role="alert" x-show="error">
                     <i class="bi bi-exclamation-octagon me-2"></i><span x-text="error"></span></div>
             </div>

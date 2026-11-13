@@ -49,7 +49,7 @@ from the schema wilds-control serves, saved as the changed fields plus the versi
             <div class="row align-items-start mb-2" :class="changed(pane, f) ? 'ui-changed' : ''">
                 <label class="col-sm-3 col-form-label">
                     <span x-text="f.label"></span>
-                    <i class="bi bi-info-circle ms-1 text-body-secondary" x-show="f.help" x-tooltip="f.help"></i>
+                    <template x-if="f.help">{% include "components/info.html" with tip="f.help" %}</template>
                 </label>
                 <div class="col-sm-9">
                     <div class="d-flex align-items-center gap-2 flex-wrap">

@@ -1,4 +1,3 @@
-{# WILDS' opstate (plan §3.16) and whether light reaches WILDS (plan §3.17), on every page. #}
-{% include "components/pill.html" with view="$store.wilds.modeView" label="Mode" icon="bi-diagram-3" %}
-{% include "components/pill.html" with view="$store.wilds.opView" label="WILDS" icon="bi-power" %}
-{% include "components/pill.html" with view="$store.wilds.lightView" label="Light" icon="bi-brightness-high" %}
+{# WILDS' mode and its opstate (plan §3.16), on every page: the first two of the header's second row of pills (the light, plan §3.17, is the third, a block of its own in base.html). #}
+<div class="ui-pill-slot">{% include "components/pill.html" with view="$store.wilds.modeView" label="Mode" icon="bi-diagram-3" %}</div>
+<div class="ui-pill-slot">{% include "components/pill.html" with view="$store.wilds.opView" label="WILDS" icon="bi-power" %}</div>

@@ -144,7 +144,6 @@ document.addEventListener("alpine:init", () => {
             if (light === "blocked" || light === "block_requested") return "The light path is blocked: there is no sky to calibrate on";
             const t = w.telescope?.telemetry;
             if (!t?.target) return "The telescope has no target: it must be on a star field (slew to one first)";
-            if (t.pending) return "A command is waiting for the Telescope Operator";
             if (t.in_position !== true) return "The telescope is not on target yet";
             if (!(this.exposure >= 0.001 && this.exposure <= 60)) return "Exposure: 0.001 to 60 s";
             if (this.gain !== null && this.gain !== "" && !(this.gain >= 0 && this.gain <= 500)) return "Gain: 0 to 500";

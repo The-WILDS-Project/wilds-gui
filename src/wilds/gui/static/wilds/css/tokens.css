@@ -86,3 +86,17 @@
 .ui-pill .pill-label { text-transform: uppercase; letter-spacing: 0.05em; font-weight: 600; margin-left: 0.15em; }
 .ui-pill .pill-value { font-weight: 400; }
 button.ui-pill { cursor: pointer; }
+/* The header's six pills: two rows of three columns, each column as wide as its widest pill, so
+   a pill a page leaves out does not move the others (its slot stays). */
+.ui-pills { display: grid; grid-template-columns: repeat(3, auto); gap: 0.25rem 0.5rem; }
+.ui-pill-slot { display: flex; }
+.ui-pill-slot > *, .ui-pill-slot .ui-pill { flex: 1 1 auto; }
+.ui-pill-slot > div { display: flex; }
+.ui-pill-slot .ui-pill { text-align: left; }
+/* A pill that is a drop down (the Telescope Operator's LIGHT): the box looks like the value. */
+.ui-pill-select-box { background: transparent; color: inherit; border: 0; padding: 0 0.1em; font: inherit; font-weight: 400; cursor: pointer; }
+.ui-pill-select-box option { color: var(--bs-body-color); background: var(--bs-body-bg); }
+
+/* The info icon that carries an explanation (templates/components/info.html): to the right of what it explains. */
+.ui-info-icon { margin-left: 0.25em; color: var(--bs-secondary-color); cursor: help; font-style: normal; }
+.ui-info-icon:hover, .ui-info-icon:focus-visible { color: var(--bs-body-color); }
