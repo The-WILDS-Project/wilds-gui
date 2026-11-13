@@ -260,7 +260,7 @@ def test_io_topbar_shows_this_sessions_control_status(client: Client) -> None:
 def test_session_badge_has_the_person_above_the_code(client: Client) -> None:
     html = client.get("/io/").content.decode()
     name = html.index('x-text="$store.session.name"')
-    code = html.index('x-text="$store.session.code" x-tooltip')
+    code = html.index('x-text="$store.session.code"')
     assert name < code
     assert '<div x-text="$store.session.name"></div>' in html  # its own line
 
@@ -528,12 +528,14 @@ def test_every_page_shows_the_light_pill_and_the_calibration_card_asks_the_to(
     assert "light_path" in status and "get lightView" in status
 
 
-def test_the_to_page_answers_light_requests(client: Client) -> None:
+def test_the_to_page_sets_the_light_from_the_header_pill(client: Client) -> None:
     page = client.get("/to/").content.decode()
-    assert "Light to WILDS" in page and "lightDone()" in page and "lightRefuse()" in page
+    assert 'aria-label="Light to WILDS"' in page and "set($event.target.value)" in page
+    assert 'value="through"' in page and 'value="blocked"' in page
+    assert "Light to WILDS</div>" not in page and "lightDone" not in page
+    assert "Telescope</div>" not in page  # the TCS pill says it
     script = Path(finders.find("wilds/js/to.js")).read_text()
-    assert "/light-path/acknowledge" in script and "/light-path/refuse" in script
-    assert "/light-path/state" in script
+    assert "/light-path/state" in script and "/light-path/refuse" not in script
 
 
 def test_the_calibration_page_has_the_guide_camera_card(client: Client) -> None:
@@ -666,7 +668,7 @@ def test_the_acquisition_tab_has_the_target_entry_and_the_slew(client: Client) -
     for part in ("Resolve", "RA (J2000)", "Slit PA", '@click="slew()"'):
         assert part in page, part
     script = Path(finders.find("wilds/js/acquisition.js")).read_text()
-    assert "/telescope/slew" in script and "/resolve?name=" in script and "Slew now" in script
+    assert "/telescope/slew" in script and "/resolve?name=" in script and "Slew" in script
     # only the coordinates go to the server: the name is for Resolve alone
     assert "{ ...t, rot_pa: Number(this.pa) }" in script and "name: this.name" not in script
     assert "acquisitionTarget" not in client.get("/io/products/").content.decode()
@@ -699,15 +701,11 @@ def test_the_acquisition_tab_adjusts_offsets_and_rotation_with_the_slit_overlay(
     assert "/config/guide-camera/cal" in slit and "setPointerCapture" in slit
 
 
-def test_the_to_page_shows_what_waits_for_the_to(client: Client) -> None:
+def test_the_to_page_shows_the_tcs_but_has_nothing_to_approve(client: Client) -> None:
     page = client.get("/to/").content.decode()
-    assert (
-        "answerPending(true)" in page
-        and "answerPending(false)" in page
-        and "pending.detail" in page
-    )
+    assert "tcsView" in page and "answerPending" not in page and "pending" not in page
     script = Path(finders.find("wilds/js/to.js")).read_text()
-    assert "/dev/telescope/" in script and "telemetry?.pending" in script
+    assert "/dev/telescope/" not in script and "answerPending" not in script
 
 
 def test_the_live_view_can_be_zoomed_and_panned(client: Client) -> None:
@@ -723,3 +721,21 @@ def test_the_live_view_can_be_zoomed_and_panned(client: Client) -> None:
         assert part in dock, part
     script = Path(finders.find("wilds/js/camera.js")).read_text()
     assert "setZoom(" in script and "get zoomStyle()" in script
+
+
+def test_the_acquisition_tab_has_the_slit_control(client: Client) -> None:
+    page = client.get("/io/operations/").content.decode()
+    assert 'x-data="acquisitionSlit()"' in page and 'id="slit-slider"' in page
+    assert 'aria-label="Opening in microns"' in page and 'aria-label="Opening in arcseconds"' in page
+    assert "apply()" in page
+    script = Path(finders.find("wilds/js/acquisition.js")).read_text()
+    assert "/slit/move" in script and "% open" in script
+
+
+def test_explanations_are_an_info_icon_with_the_tooltip_on_it(client: Client) -> None:
+    info = (Path(finders.find("wilds/css/tokens.css"))).read_text()
+    assert ".ui-info-icon" in info
+    dock = client.get("/io/operations/").content.decode()
+    # the guide-camera dock's labels: the icon is inside the label, the tooltip is on the icon
+    assert 'class="bi bi-info-circle ui-info-icon"' in dock
+    assert "x-tooltip=\"'Exposure: 0.001 to 60 s'\"" in dock and "style=\"cursor: help;\"" not in dock

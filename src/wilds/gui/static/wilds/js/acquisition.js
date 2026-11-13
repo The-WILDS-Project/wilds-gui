@@ -3,11 +3,11 @@
  * coordinates (or a name, which Resolve turns into coordinates through wilds-control's
  * GET /resolve), the slit's sky PA, and the slew with its progress. Only the coordinates are sent.
  *
- * The slew is a job on wilds-control (POST /telescope/slew). With the TCS's External Command
- * Preview on it waits for the Telescope Operator to accept the target in the TCS; the job's
- * message says which step it is at (sent, waiting for the TO, in progress, done), and progress
- * is read from the telescope's own telemetry there, never assumed from having sent. A slew with
- * Preview off moves the telescope at once, so it is confirmed first. All text goes in with x-text.
+ * The slew is a job on wilds-control (POST /telescope/slew). Nobody approves it: the TCS acts on
+ * it while it accepts external commands (the header's "TCS: accepts/rejects"; the button says why
+ * not when it rejects). The job's message says which step it is at (sent, in progress, done),
+ * and progress is read from the telescope's own telemetry there, never assumed from having sent.
+ * All text goes in with x-text.
  */
 document.addEventListener("alpine:init", () => {
     const base = document.body.dataset.controlUrl;
@@ -128,8 +128,7 @@ document.addEventListener("alpine:init", () => {
         },
 
         // -- the slew --------------------------------------------------------------------------
-        get previewOn() { return wilds().tcs?.preview !== false; },  // unknown counts as on
-        get label() { return this.previewOn ? "Send to TO preview" : "Slew now"; },
+        get label() { return "Slew"; },
         get paValid() { return Number.isFinite(Number(this.pa)) && String(this.pa).trim() !== ""; },
         get whyNot() {
             const s = session();
@@ -145,10 +144,6 @@ document.addEventListener("alpine:init", () => {
         async slew() {
             if (this.whyNot) return;
             const t = this.target;
-            if (!this.previewOn) {
-                const ok = await uiConfirm(`Slew to ${this.coordinatesText} now? Preview is off: the telescope moves at once.`, { title: "Slew now", ok: "Slew" });
-                if (!ok) return;
-            }
             this.sending = true; this.error = null;
             try {
                 const job = await api("POST", "/telescope/slew", { ...t, rot_pa: Number(this.pa) });
@@ -180,11 +175,6 @@ document.addEventListener("alpine:init", () => {
         get telescope() { return wilds().telescope?.telemetry || null; },
         get nowText() {
             const t = this.telescope;
-            // With Preview on a sent command is not the telescope's yet: say so, not "no target".
-            if (t?.pending) {
-                const now = t.target ? ` (still on ${t.target.name})` : "";
-                return `Waiting for the TO to accept ${t.pending.what}${now}`;
-            }
             if (!t || !t.target) return "No target yet";
             const where = t.in_position === false ? "moving" : "in position";
             return `${t.target.name}  ${hms(t.target.ra_hours)}  ${dms(t.target.dec_deg)} · ${where} · slit PA ${t.rot_pa?.toFixed(1) ?? "?"}°`;
@@ -235,6 +225,80 @@ document.addEventListener("alpine:init", () => {
         }));
     }
 
+    // -- the slit stage: where it is, and a slider to move it (POST /slit/move) ----------------
+    Alpine.data("acquisitionSlit", () => ({
+        pendingUm: null,     // what the slider and the boxes hold, in microns; null: follow the stage
+        sending: false,
+        error: null,
+
+        get slit() { return wilds().slit; },
+        get known() { return this.slit?.position_um !== null && this.slit?.position_um !== undefined; },
+        get perArcsec() { return this.slit?.um_per_arcsec || 124.69; },
+        get maxUm() { return this.slit?.max_um ?? 21000; },
+        get minUm() { return this.slit?.min_um ?? 0; },
+        /** The stage's opening now: "10500 µm · 84.2 arcsec · 50 % of travel". */
+        get nowText() {
+            const s = this.slit;
+            if (!s || !this.known) return "unknown";
+            const um = s.position_um;
+            const span = (s.max_um - s.min_um) || 1;
+            const text = `${um.toFixed(um < 100 ? 1 : 0)} µm · ${(um / this.perArcsec).toFixed(um < 100 ? 3 : 2)} arcsec · ${(100 * (um - s.min_um) / span).toFixed(1)} % open`;
+            return s.moving ? `${text} (moving…)` : text;
+        },
+        get percentNow() {
+            const s = this.slit;
+            return this.known ? Math.max(0, Math.min(100, 100 * (s.position_um - s.min_um) / ((s.max_um - s.min_um) || 1))) : 0;
+        },
+        get presetText() { return this.slit?.preset ? `at the ${this.slit.preset} preset` : ""; },
+
+        // what the controls hold: the pending value, or the stage's own position
+        get um() { return this.pendingUm ?? (this.known ? this.slit.position_um : this.minUm); },
+        get arcsec() { return this.um / this.perArcsec; },
+        // A box being typed in keeps what was typed (it is not rewritten from the other units).
+        editing: null,       // "um" | "arcsec" | null
+        typed: "",
+        get umText() { return this.editing === "um" ? this.typed : this.um.toFixed(this.um < 100 ? 1 : 0); },
+        get arcsecText() { return this.editing === "arcsec" ? this.typed : this.arcsec.toFixed(this.arcsec < 1 ? 3 : 2); },
+        setUm(text, box = null) {
+            this.editing = box; this.typed = String(text);
+            const n = String(text).trim() === "" ? null : Number(text);
+            this.pendingUm = Number.isFinite(n) ? n : null;
+        },
+        setArcsec(text) {
+            this.editing = "arcsec"; this.typed = String(text);
+            const n = String(text).trim() === "" ? null : Number(text);
+            this.pendingUm = Number.isFinite(n) ? n * this.perArcsec : null;
+        },
+        done() { this.editing = null; },
+        reset() { this.pendingUm = null; this.editing = null; },
+        get changed() { return this.pendingUm !== null && (!this.known || Math.abs(this.pendingUm - this.slit.position_um) > 0.05); },
+
+        get whyNot() {
+            const s = session();
+            if (!s?.holder) return "Request control first: only the holder can move the slit";
+            const c = wilds().system?.components?.slit;
+            if (c && !c.operational) return `The slit is not operational: ${(c.why_not_operational || []).join("; ")}`;
+            if (this.slit?.moving) return "The slit is moving";
+            if ((wilds().jobs || []).some((j) => (j.state === "running" || j.state === "queued") && (j.components || []).includes("slit"))) {
+                return "A procedure is using the slit";
+            }
+            if (this.pendingUm === null) return "Move the slider or type a value first";
+            if (this.pendingUm < this.minUm || this.pendingUm > this.maxUm) {
+                return `The gap is 0 to ${(this.maxUm / this.perArcsec).toFixed(1)} arcsec (${this.minUm} to ${this.maxUm} µm)`;
+            }
+            return "";
+        },
+        async apply() {
+            if (this.whyNot) return;
+            this.sending = true; this.error = null;
+            try {
+                await api("POST", "/slit/move", { position_um: this.pendingUm });
+                this.pendingUm = null;
+            } catch (e) { this.error = String(e.message || e); }
+            this.sending = false;
+        },
+    }));
+
     Alpine.data("acquisitionRotation", () => withJob({
         sending: false,
         error: null,
@@ -272,7 +336,7 @@ document.addEventListener("alpine:init", () => {
         error: null,
 
         init() {
-            // A star picked on the live view: move the pointing by the offset from the slit to it.
+            // A point picked on the live view: move the pointing by the offset from the slit to it.
             slit().pickHandler = (e, n) => { this.moveBy(e, n); };
             this.$watch(() => this.last?.state, (state) => {
                 if (state === "done") { this.pending = null; slit().pickMark = null; }
@@ -300,7 +364,7 @@ document.addEventListener("alpine:init", () => {
             if (this.job) return "A telescope command is in progress";
             return "";
         },
-        get whyNotApply() { return this.whyNot || (this.pending ? "" : "Nudge, or pick a star, first"); },
+        get whyNotApply() { return this.whyNot || (this.pending ? "" : "Nudge, or pick a point, first"); },
         apply() { if (!this.whyNotApply) return this.submit("/telescope/offset", { d1_arcsec: this.pending.d1, d2_arcsec: this.pending.d2 }); },
         clear() { if (!this.whyNot) return this.submit("/telescope/offset/clear", {}); },
         async absorb() {

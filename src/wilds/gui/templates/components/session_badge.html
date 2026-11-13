@@ -3,7 +3,7 @@
     <i class="bi bi-person-circle fs-5"></i>
     <div class="lh-sm text-center">
         <div x-text="$store.session.name"></div>
-        <div><code x-text="$store.session.code" x-tooltip="$store.session.provenance"
-                   style="cursor: help;"></code></div>
+        <div><code x-text="$store.session.code"></code>
+            {% include "components/info.html" with tip="$store.session.provenance" %}</div>
     </div>
 </div>

@@ -145,14 +145,16 @@ the dock as a thumbnail. Logic and the video socket: static/wilds/js/camera.js.
                        aria-label="Open the latest frame in the JS9 viewer"><i class="bi bi-eye"></i></a>
                 </div>
                 <div class="row g-2 align-items-center">
-                    <label class="col-4 col-form-label-sm" for="cam-exposure">Exposure (s)</label>
+                    <label class="col-4 col-form-label-sm" for="cam-exposure">Exposure (s)
+                        {% include "components/info.html" with tip="'Exposure: 0.001 to 60 s'" %}</label>
                     <div class="col-8">
                         <input id="cam-exposure" type="number" min="0.001" max="60" step="any" class="form-control form-control-sm"
                                x-model="exposure" :disabled="!$store.jobs.canControl"
                                @focus="editing = 'exposure'" @blur="editing = ''"
                                @change="$store.camera.setting('video exposure', { video: { exposure_s: Number(exposure) } })">
                     </div>
-                    <label class="col-4 col-form-label-sm" for="cam-gain">Gain</label>
+                    <label class="col-4 col-form-label-sm" for="cam-gain">Gain
+                        {% include "components/info.html" with tip="'Gain: 0 to 500 (0.1 dB steps)'" %}</label>
                     <div class="col-8">
                         <input id="cam-gain" type="number" min="0" max="500" step="1" class="form-control form-control-sm"
                                x-model="gain" :disabled="!$store.jobs.canControl"
@@ -161,7 +163,8 @@ the dock as a thumbnail. Logic and the video socket: static/wilds/js/camera.js.
                     </div>
                     <template x-if="$store.wilds.guide_camera?.cooler?.supported">
                         <div class="col-12 row g-2 align-items-center m-0 p-0">
-                            <label class="col-4 col-form-label-sm" for="cam-setpoint">Cooler (°C)</label>
+                            <label class="col-4 col-form-label-sm" for="cam-setpoint">Cooler (°C)
+                                {% include "components/info.html" with tip="'Cooler setpoint: -40 to 30 °C'" %}</label>
                             <div class="col-5">
                                 <input id="cam-setpoint" type="number" min="-40" max="30" step="1" class="form-control form-control-sm"
                                        x-model="setpoint" :disabled="!$store.jobs.canControl"

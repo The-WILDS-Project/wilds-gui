@@ -1,7 +1,7 @@
 {% comment %}
 A control that greys out with its reason (plan §3.12). The status store says whether the
 action is available and why not; wilds-control enforces the same rule.
-  {% include "components/action_button.html" with action="slew" label="Send to TO preview" click="slew()" %}
+  {% include "components/action_button.html" with action="slew" label="Slew" click="slew()" %}
 {% endcomment %}
 <span x-data :class="$store.wilds.action('{{ action }}').ok ? '' : 'ui-unavailable'"
       x-tooltip="$store.wilds.action('{{ action }}').ok ? '' : $store.wilds.action('{{ action }}').why">

@@ -24,11 +24,15 @@
             <div class="ui-title">{% block heading %}WILDS{% endblock %}</div>
             {% block clocks %}{% include "components/clocks.html" with show_lt=True %}{% endblock %}
 
-            <div class="flex-grow-1 d-flex align-items-center justify-content-center gap-2">
-                {% block control %}{% include "components/control_holder.html" %}{% endblock %}
-                {% block to_status %}{% include "components/to_status.html" %}{% endblock %}
-                {% include "components/tcs_access_badge.html" %}
-                {% include "components/wilds_status.html" %}
+            {# Six indicators in a fixed grid, two rows of three, so none jumps when another changes or a page leaves one out: each has its own slot, empty when the page has no such pill. #}
+            <div class="flex-grow-1 d-flex justify-content-center">
+                <div class="ui-pills">
+                    <div class="ui-pill-slot">{% block control %}{% include "components/control_holder.html" %}{% endblock %}</div>
+                    <div class="ui-pill-slot">{% block to_status %}{% include "components/to_status.html" %}{% endblock %}</div>
+                    <div class="ui-pill-slot">{% include "components/tcs_access_badge.html" %}</div>
+                    {% include "components/wilds_status.html" %}
+                    <div class="ui-pill-slot">{% block light_status %}{% include "components/pill.html" with view="$store.wilds.lightView" label="Light" icon="bi-brightness-high" %}{% endblock %}</div>
+                </div>
             </div>
 
             {# The session sits outside the wrapping group, so it stays on the header's middle line. #}

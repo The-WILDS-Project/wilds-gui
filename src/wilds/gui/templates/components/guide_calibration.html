@@ -50,7 +50,7 @@ guide-camera dock in place of the video; a stored image opens there too (or in a
         </div>
         <div>
             <label class="form-label small mb-1" for="gc-match">Settings of
-                <i class="bi bi-info-circle text-body-secondary" x-tooltip="'The group whose gain, offset, binning and ROI the frames use; a dark also uses its exposure. Master frames are matched to the frames they correct.'"></i></label>
+                {% include "components/info.html" with tip="'The group whose gain, offset, binning and ROI the frames use; a dark also uses its exposure. Master frames are matched to the frames they correct.'" %}</label>
             <select id="gc-match" class="form-select form-select-sm w-auto" x-model="match">
                 <option value="single_frame">Single frame</option>
                 <option value="video">Video</option>

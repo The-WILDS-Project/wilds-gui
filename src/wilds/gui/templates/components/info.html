@@ -1,0 +1,9 @@
+{% comment %}
+The convention for an explanation: an element that has a tooltip with something to read (what a field
+means, its valid range, where a value comes from) gets this info icon to its right, and the tooltip is
+anchored on the icon, not on the element. `tip` is an Alpine expression for the text, e.g.
+  {% include "components/info.html" with tip="'Exposure: 0.001 to 60 s'" %}
+Not for controls that grey out with their reason, buttons, or the header pills: their tooltip is
+on the control itself. The icon is keyboard-focusable, so the text is reachable without a mouse.
+{% endcomment %}
+<i class="bi bi-info-circle ui-info-icon" tabindex="0" role="img" x-tooltip="{{ tip }}" :aria-label="{{ tip }}"></i>

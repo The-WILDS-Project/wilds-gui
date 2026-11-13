@@ -12,14 +12,16 @@ and is applied only by the button. The two frames appear in the guide-camera doc
 
     <div class="d-flex flex-wrap align-items-end gap-3 mb-2">
         <div>
-            <label class="form-label small mb-1" for="oc-exposure">Exposure</label>
+            <label class="form-label small mb-1" for="oc-exposure">Exposure
+                {% include "components/info.html" with tip="'Exposure: 0.001 to 60 s'" %}</label>
             <div class="input-group input-group-sm" style="width: 8rem;">
                 <input id="oc-exposure" type="number" class="form-control" min="0.001" max="60" step="any" x-model.number="exposure">
                 <span class="input-group-text">s</span>
             </div>
         </div>
         <div>
-            <label class="form-label small mb-1" for="oc-gain">Gain</label>
+            <label class="form-label small mb-1" for="oc-gain">Gain
+                {% include "components/info.html" with tip="'Gain: 0 to 500 (0.1 dB steps)'" %}</label>
             <input id="oc-gain" type="number" class="form-control form-control-sm" style="width: 6rem;" min="0" max="500" step="1"
                    x-model.number="gain" placeholder="as set">
         </div>
@@ -33,7 +35,7 @@ and is applied only by the button. The two frames appear in the guide-camera doc
         </div>
         <div>
             <label class="form-label small mb-1" for="oc-width">Measuring gap
-                <i class="bi bi-info-circle text-body-secondary" x-tooltip="'The slit is opened to this width for the second frame: a strip that is narrower than the slit is long, wide enough to find easily. Fully open is wider than the slit is long.'"></i></label>
+                {% include "components/info.html" with tip="'The slit is opened to this width for the second frame: a strip that is narrower than the slit is long, wide enough to find easily. Fully open is wider than the slit is long.'" %}</label>
             <div class="input-group input-group-sm" style="width: 9rem;">
                 <input id="oc-width" type="number" class="form-control" min="0" step="any" x-model.number="width">
                 <span class="input-group-text">arcsec</span>

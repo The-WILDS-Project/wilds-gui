@@ -17,6 +17,38 @@ document.addEventListener("alpine:init", () => {
     const BEAT = "setInterval(() => postMessage(0), " + POLL_MS + ");";
     const base = document.body.dataset.controlUrl;
 
+    // The header's LIGHT pill (plan §3.17): a drop down that tells wilds-control whether the light
+    // to WILDS is blocked or goes through, which also answers a request of the instrument operator.
+    // It is outside the page's component, so it reads the passphrase itself; the new state comes
+    // back in the status stream.
+    Alpine.data("toLight", () => ({
+        get light() { return Alpine.store("wilds").light_path; },
+        get passphrase() {
+            try { return sessionStorage.getItem(KEY) || ""; } catch { return ""; }
+        },
+        async set(choice) {
+            const state = choice === "blocked" ? "blocked" : "lit";
+            if (!this.passphrase) {
+                showToast("error", "Unlock first", "Enter the Telescope Operator passphrase below");
+                return;
+            }
+            try {
+                const response = await fetch(`${base}/light-path/state`, {
+                    method: "PUT",
+                    headers: { "X-TO-Passphrase": this.passphrase, "Content-Type": "application/json" },
+                    body: JSON.stringify({ state }),
+                });
+                if (!response.ok) {
+                    const body = await response.json().catch(() => ({}));
+                    throw new Error(body.message || body.detail || `HTTP ${response.status}`);
+                }
+                showToast("success", state === "blocked" ? "Light blocked" : "Light goes through");
+            } catch (e) {
+                showToast("error", "Action failed", String(e.message || e));
+            }
+        },
+    }));
+
     Alpine.data("toSessions", () => ({
         passphrase: sessionStorage.getItem(KEY) || "",
         entry: "",
@@ -44,41 +76,6 @@ document.addEventListener("alpine:init", () => {
             if (this.opstate === null) return "WILDS state not known yet";
             if (this.wilds.busyWith) return `WILDS is ${this.wilds.busyWith}`;
             return this.opstate === "shutdown" ? "WILDS is shut down already" : "";
-        },
-        // -- the light to WILDS (plan §3.17): the instrument operator asks, the TO does
-        // what is needed and says so.
-        get light() { return this.wilds.light_path; },
-        get lightPending() { return ["block_requested", "unblock_requested"].includes(this.light?.state); },
-        async lightDone() {
-            const blocking = this.light.state === "block_requested";
-            const note = await uiPrompt(
-                blocking ? "The light to WILDS is blocked. Note (optional, e.g. how)" : "The light reaches WILDS again. Note (optional)",
-                { title: blocking ? "Light blocked" : "Light restored", ok: "Confirm" },
-            );
-            if (note === null) return;
-            await this.act("/light-path/acknowledge", note ? { note } : {}, blocking ? "Light blocked" : "Light restored");
-        },
-        async lightRefuse() {
-            const reason = await uiPrompt("Why not now? The instrument operator sees this.", { title: "Cannot do it now", ok: "Refuse" });
-            if (reason === null) return;
-            await this.act("/light-path/refuse", { reason: reason || "not now" }, "Request refused");
-        },
-        async lightIs(state) {
-            await this.act("/light-path/state", { state }, state === "blocked" ? "Marked blocked" : "Marked lit", "PUT");
-        },
-        // -- a target (or a rotation) the instrument operator sent, waiting for the TO (plan §3.12).
-        // With External Command Preview on the TCS holds it until it is accepted in the TCS's own
-        // preview panel; this page shows what is waiting. Only the simulated TCS can be answered from
-        // here (development), through the /dev helpers.
-        get pending() { return this.wilds.telescope?.telemetry?.pending || null; },
-        get simulated() { return this.wilds.telescope?.kind === "simulated" && this.wilds.opmode === "development"; },
-        async answerPending(accept) {
-            const what = this.pending?.what ?? "the command";
-            try {
-                const response = await fetch(`${base}/dev/telescope/${accept ? "accept" : "reject"}`, { method: "POST" });
-                if (!response.ok) throw new Error(`HTTP ${response.status}`);
-                showToast("success", accept ? `Accepted ${what}` : `Rejected ${what}`);
-            } catch (e) { showToast("error", "Could not answer", String(e.message || e)); }
         },
         async startup() { await this.act("/system/startup", {}, "Start-up begun"); },
         async shutdown() {

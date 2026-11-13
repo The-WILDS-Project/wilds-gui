@@ -21,9 +21,9 @@ document.addEventListener("alpine:init", () => {
         cal: null,            // the guide camera's cal values, or null until read
         calVersion: null,
         pendingPa: null,      // a PA being set by the handle or the Rotation panel (degrees), or null
-        pick: false,          // the next click on the image picks a star to put on the slit
+        pick: false,          // the next click on the image picks a point to put on the slit
         pickMark: null,       // where it was picked: {x, y} in image pixels
-        pickHandler: null,    // called with (east_arcsec, north_arcsec) when a star is picked
+        pickHandler: null,    // called with (east_arcsec, north_arcsec) when a point is picked
         detected: null,       // the last optics calibration (Engineering → Calibration → Slit), or null
 
         async load() {

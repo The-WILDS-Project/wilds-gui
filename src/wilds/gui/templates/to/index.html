@@ -9,6 +9,7 @@
 {% block session_badge %}{% endblock %}
 {% block session_js %}{% endblock %}
 {% block to_status %}{% endblock %}
+{% block light_status %}{% include "components/light_select.html" %}{% endblock %}
 {% block extra_js %}<script src="{% static 'wilds/js/to.js' %}?v={{ asset_version }}" defer></script>{% endblock %}
 {% block content %}
 {# Single page, no sidebar (plan §3.11). Placeholders until wilds-control serves sessions. #}
@@ -16,68 +17,17 @@
     <div class="col-lg-6">
         <div class="card mb-3" x-show="unlocked">
             <div class="card-header"><i class="bi bi-power me-2"></i>WILDS</div>
-            <div class="card-body">
-                <p class="mb-2">State: <span class="badge" :class="$store.wilds.opView.cls" x-text="$store.wilds.opView.text"></span></p>
-                <ul class="small mb-3" x-show="($store.wilds.system?.why_not_operational || []).length">
-                    <template x-for="r in $store.wilds.system?.why_not_operational || []" :key="r">
-                        <li x-text="r"></li>
-                    </template>
-                </ul>
-                <div class="d-flex gap-2">
-                    <span :class="whyNotStartup ? 'ui-unavailable' : ''" x-tooltip="whyNotStartup">
-                        <button type="button" class="btn btn-primary" :disabled="!!whyNotStartup" @click="startup()">
-                            <i class="bi bi-play-fill me-1"></i>Start up</button>
-                    </span>
-                    <span :class="whyNotShutdown ? 'ui-unavailable' : ''" x-tooltip="whyNotShutdown">
-                        <button type="button" class="btn btn-outline-danger" :disabled="!!whyNotShutdown" @click="shutdown()">
-                            <i class="bi bi-stop-fill me-1"></i>Shut down</button>
-                    </span>
-                </div>
-            </div>
-        </div>
-        <div class="card mb-3" x-show="unlocked">
-            <div class="card-header"><i class="bi bi-crosshair me-2"></i>Telescope</div>
-            <div class="card-body">
-                <p class="mb-2">TCS: <span class="badge" :class="$store.wilds.tcsView.cls" x-text="$store.wilds.tcsView.text"></span>
-                    <span class="small text-body-secondary ms-2" x-text="$store.wilds.previewText"></span></p>
-                <template x-if="pending">
-                    <div class="alert alert-warning py-2 mb-0">
-                        <strong x-text="(pending.command === 'target' ? 'Target waiting for you: ' : 'Rotation waiting for you: ') + pending.what"></strong>
-                        <div class="small mt-1" x-text="pending.detail"></div>
-                        <div class="small mt-1" x-show="!simulated">Accept it in the TCS's preview panel; this page shows it while it waits.</div>
-                        <div class="d-flex gap-2 mt-2" x-show="simulated">
-                            <button type="button" class="btn btn-sm btn-primary" @click="answerPending(true)"><i class="bi bi-check-lg me-1"></i>Accept</button>
-                            <button type="button" class="btn btn-sm btn-outline-secondary" @click="answerPending(false)">Reject</button>
-                            <span class="small text-body-secondary align-self-center">simulated TCS</span>
-                        </div>
-                    </div>
-                </template>
-                <p class="small text-body-secondary mb-0" x-show="!pending">
-                    <span x-text="$store.wilds.telescope?.telemetry?.target ? 'Current target: ' + $store.wilds.telescope.telemetry.target.name : 'No target yet'"></span>.
-                    Nothing is waiting for you.</p>
-            </div>
-        </div>
-        <div class="card mb-3" x-show="unlocked">
-            <div class="card-header"><i class="bi bi-brightness-high me-2"></i>Light to WILDS</div>
-            <div class="card-body">
-                <p class="mb-2">State:
-                    <span class="badge" :class="$store.wilds.lightView.cls" x-text="$store.wilds.lightView.text"></span></p>
-                <template x-if="lightPending">
-                    <div class="alert alert-warning py-2">
-                        <strong x-text="(light.requested_by || 'The instrument operator') + (light.state === 'block_requested' ? ' asks you to block the light to WILDS' : ' asks you to let the light in again')"></strong>
-                        <div class="small mt-1">Do what is needed on the telescope, then confirm.</div>
-                        <div class="d-flex gap-2 mt-2">
-                            <button type="button" class="btn btn-sm btn-primary" @click="lightDone()">
-                                <i class="bi bi-check-lg me-1"></i><span x-text="light.state === 'block_requested' ? 'Light is blocked' : 'Light is restored'"></span></button>
-                            <button type="button" class="btn btn-sm btn-outline-secondary" @click="lightRefuse()">Not now…</button>
-                        </div>
-                    </div>
-                </template>
-                <div class="d-flex flex-wrap gap-2 align-items-center">
-                    <span class="small text-body-secondary">Tell WILDS how things are:</span>
-                    <button type="button" class="btn btn-sm btn-outline-secondary" :disabled="light?.state === 'lit'" @click="lightIs('lit')">Light is on</button>
-                    <button type="button" class="btn btn-sm btn-outline-secondary" :disabled="light?.state === 'blocked'" @click="lightIs('blocked')">Light is blocked</button>
-                </div>
+            <div class="card-body d-flex flex-wrap align-items-center gap-2">
+                <span>State:</span>
+                <span class="badge" :class="$store.wilds.opView.cls" x-text="$store.wilds.opView.text" x-tooltip="$store.wilds.opView.tip"></span>
+                <span :class="whyNotStartup ? 'ui-unavailable' : ''" x-tooltip="whyNotStartup">
+                    <button type="button" class="btn btn-sm btn-primary py-0" :disabled="!!whyNotStartup" @click="startup()">
+                        <i class="bi bi-play-fill me-1"></i>Start up</button>
+                </span>
+                <span :class="whyNotShutdown ? 'ui-unavailable' : ''" x-tooltip="whyNotShutdown">
+                    <button type="button" class="btn btn-sm btn-outline-danger py-0" :disabled="!!whyNotShutdown" @click="shutdown()">
+                        <i class="bi bi-stop-fill me-1"></i>Shut down</button>
+                </span>
             </div>
         </div>
         <div class="card">
@@ -96,7 +46,7 @@
                                 <template x-if="holder">
                                     <span>
                                         <strong x-text="holder.name"></strong>
-                                        <code x-text="holder.code" x-tooltip="holder.provenance" style="cursor: help;"></code>
+                                        <code x-text="holder.code"></code>{% include "components/info.html" with tip="holder.provenance" %}
                                         <span class="badge ui-warning" x-show="engineering">engineering</span>
                                         <button type="button" class="btn btn-sm btn-outline-danger ms-2"
                                                 @click="revoke()">Revoke control</button>
@@ -110,7 +60,7 @@
                                 <template x-for="r in requests" :key="r.code">
                                     <li class="d-flex align-items-center gap-2 mb-1">
                                         <span x-text="r.name"></span>
-                                        <code x-text="r.code" x-tooltip="r.provenance" style="cursor: help;"></code>
+                                        <code x-text="r.code"></code>{% include "components/info.html" with tip="r.provenance" %}
                                         <button type="button" class="btn btn-sm btn-primary ms-2" @click="grant(r)">Grant</button>
                                         <button type="button" class="btn btn-sm btn-outline-secondary" @click="refuse(r)">Refuse</button>
                                     </li>
@@ -121,7 +71,7 @@
                             <ul class="list-unstyled mb-3">
                                 <template x-for="v in viewers" :key="v.code">
                                     <li><span x-text="v.name"></span>
-                                        <code x-text="v.code" x-tooltip="v.provenance" style="cursor: help;"></code></li>
+                                        <code x-text="v.code"></code>{% include "components/info.html" with tip="v.provenance" %}</li>
                                 </template>
                             </ul>
                         </div>

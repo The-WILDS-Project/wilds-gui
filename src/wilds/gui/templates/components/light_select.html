@@ -1,0 +1,16 @@
+{% comment %}
+The light to WILDS (plan §3.17) as the header's LIGHT pill on the Telescope Operator page: a drop
+down to say whether the light is blocked or goes through. Choosing one tells wilds-control how
+things are, which also answers a pending request of the instrument operator. While the state is
+none of the two (unknown, or a request waiting) the pill's own text shows in the box.
+{% endcomment %}
+<span x-data="toLight" class="badge ui-pill ui-pill-select" :class="$store.wilds.lightView.cls" x-tooltip="$store.wilds.lightView.tip">
+    <i class="bi" :class="$store.wilds.lightView.icon || 'bi-brightness-high'"></i>
+    <span class="pill-label">Light:</span>
+    <select class="ui-pill-select-box" aria-label="Light to WILDS"
+            :value="{lit: 'through', blocked: 'blocked'}[light?.state] || ''" @change="set($event.target.value)">
+        <option value="" disabled x-text="$store.wilds.lightView.text"></option>
+        <option value="through">through</option>
+        <option value="blocked">blocked</option>
+    </select>
+</span>
