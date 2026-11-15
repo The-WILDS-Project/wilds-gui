@@ -17,38 +17,6 @@ document.addEventListener("alpine:init", () => {
     const BEAT = "setInterval(() => postMessage(0), " + POLL_MS + ");";
     const base = document.body.dataset.controlUrl;
 
-    // The header's LIGHT pill (plan §3.17): a drop down that tells wilds-control whether the light
-    // to WILDS is blocked or goes through, which also answers a request of the instrument operator.
-    // It is outside the page's component, so it reads the passphrase itself; the new state comes
-    // back in the status stream.
-    Alpine.data("toLight", () => ({
-        get light() { return Alpine.store("wilds").light_path; },
-        get passphrase() {
-            try { return sessionStorage.getItem(KEY) || ""; } catch { return ""; }
-        },
-        async set(choice) {
-            const state = choice === "blocked" ? "blocked" : "lit";
-            if (!this.passphrase) {
-                showToast("error", "Unlock first", "Enter the Telescope Operator passphrase below");
-                return;
-            }
-            try {
-                const response = await fetch(`${base}/light-path/state`, {
-                    method: "PUT",
-                    headers: { "X-TO-Passphrase": this.passphrase, "Content-Type": "application/json" },
-                    body: JSON.stringify({ state }),
-                });
-                if (!response.ok) {
-                    const body = await response.json().catch(() => ({}));
-                    throw new Error(body.message || body.detail || `HTTP ${response.status}`);
-                }
-                showToast("success", state === "blocked" ? "Light blocked" : "Light goes through");
-            } catch (e) {
-                showToast("error", "Action failed", String(e.message || e));
-            }
-        },
-    }));
-
     Alpine.data("toSessions", () => ({
         passphrase: sessionStorage.getItem(KEY) || "",
         entry: "",

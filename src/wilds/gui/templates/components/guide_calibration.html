@@ -1,6 +1,6 @@
 {% comment %}
 The guide camera's dark and bias frames (plan §3.17, static/wilds/js/guide_calibration.js): take
-N frames with the camera's own settings (a dark needs the light path blocked: ask the TO), and look
+N frames with the camera's own settings (a dark needs the instrument cover closed: tell the TO first), and look
 at the stored ones in calibration sessions. A run's frames, then its master, appear in the
 guide-camera dock in place of the video; a stored image opens there too (or in a tab of its own).
 {% endcomment %}
@@ -9,32 +9,8 @@ guide-camera dock in place of the video; a stored image opens there too (or in a
         <i class="bi bi-exclamation-octagon me-2"></i><span x-text="error"></span>
     </div>
 
-    {# The light to WILDS: the TO blocks it for darks and restores it after (plan §3.17). #}
-    <div class="d-flex flex-wrap align-items-center gap-2 mb-3 p-2 border rounded">
-        {% include "components/pill.html" with view="$store.wilds.lightView" label="Light" icon="bi-brightness-high" %}
-        <template x-if="!lightPending && lightState !== 'blocked'">
-            <span :class="whyNotAsk ? 'ui-unavailable' : ''" x-tooltip="whyNotAsk">
-                <button type="button" class="btn btn-sm btn-outline-primary" :disabled="!!whyNotAsk" @click="asLight('block-request')">
-                    <i class="bi bi-moon me-1"></i>Ask the TO to block the light</button>
-            </span>
-        </template>
-        <template x-if="!lightPending && lightState === 'blocked'">
-            <span :class="whyNotAsk ? 'ui-unavailable' : ''" x-tooltip="whyNotAsk">
-                <button type="button" class="btn btn-sm btn-outline-primary" :disabled="!!whyNotAsk" @click="asLight('restore-request')">
-                    <i class="bi bi-brightness-high me-1"></i>Ask the TO to restore the light</button>
-            </span>
-        </template>
-        <template x-if="lightPending">
-            <span class="d-flex align-items-center gap-2">
-                <span class="small text-body-secondary" x-text="lightState === 'block_requested' ? 'Waiting for the TO to block the light…' : 'Waiting for the TO to restore the light…'"></span>
-                <button type="button" class="btn btn-sm btn-outline-secondary" :disabled="!!whyNotAsk" @click="asLight('cancel')">Cancel request</button>
-            </span>
-        </template>
-        <span class="small text-warning-emphasis" x-show="light?.refusal">
-            <i class="bi bi-exclamation-triangle me-1"></i>The TO could not: <span x-text="light?.refusal"></span>
-        </span>
-        <span class="small text-body-secondary" x-show="light?.note && lightState !== 'unknown'" x-text="'TO: ' + light?.note"></span>
-    </div>
+    {# The instrument cover: closed for darks (plan §3.17). #}
+    <div class="mb-3 p-2 border rounded">{% include "components/cover_controls.html" %}</div>
 
     <div class="d-flex flex-wrap align-items-end gap-3 mb-2">
         <div>

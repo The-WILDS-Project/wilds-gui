@@ -6,7 +6,8 @@
 {% block dock %}{% include "components/camera_dock.html" %}{% endblock %}
 {% block extra_js %}<script src="{% static 'wilds/js/config.js' %}?v={{ asset_version }}" defer></script>
 <script src="{% static 'wilds/js/guide_calibration.js' %}?v={{ asset_version }}" defer></script>
-<script src="{% static 'wilds/js/optics_calibration.js' %}?v={{ asset_version }}" defer></script>{% endblock %}
+<script src="{% static 'wilds/js/optics_calibration.js' %}?v={{ asset_version }}" defer></script>
+<script src="{% static 'wilds/js/cover.js' %}?v={{ asset_version }}" defer></script>{% endblock %}
 {% block content %}
 {% comment %} Engineering mode (plan §3.11): the passphrase is checked by wilds-control, which gives this
    session the lease in engineering mode. No TO involvement; coordination is by Zoom or in person.
@@ -18,10 +19,6 @@
                    try { await $store.session.enterEngineering(this.passphrase); this.passphrase = ''; }
                    catch (e) { this.error = String(e.message || e); }
                    this.busy = false;
-               },
-               async leave() {
-                   try { await $store.session.release(); }
-                   catch (e) { showToast('error', 'Could not release control', String(e.message || e)); }
                } }">
 
     <div class="alert alert-warning py-2" role="alert" x-show="$store.wilds.warnings.length > 0">
@@ -33,8 +30,8 @@
         <div class="card-body">
             <p class="text-body-secondary small">
                 Entering the passphrase takes control of the WILDS mechanisms (stages, lamps, cameras,
-                calibration) in engineering mode. Whoever holds control now drops to read-only. Telescope
-                commands still need the Telescope Operator.
+                calibration) in engineering mode. Whoever holds control now drops to read-only. Engineering
+                needs no Telescope Operator grant, and may command the telescope too.
             </p>
             <form @submit.prevent="enter()" class="d-flex gap-2">
                 <input type="password" class="form-control" x-model="passphrase" autocomplete="off"
@@ -48,7 +45,11 @@
     <div x-show="$store.session.engineering">
         <div class="d-flex align-items-center justify-content-between mb-3">
             <h4 class="mb-0"><span class="badge ui-warning me-2">engineering mode</span>You hold control</h4>
-            <button type="button" class="btn btn-outline-secondary" @click="leave()">Release control</button>
+            {# Nobody releases control: the TO grants it to the next requester. #}
+            <span x-tooltip="$store.session.requested ? 'Waiting for the Telescope Operator' : 'Ask the Telescope Operator to hand control on'">
+                <button type="button" class="btn btn-outline-primary" :disabled="$store.session.requested"
+                        @click="$store.session.requestControl()">Request control</button>
+            </span>
         </div>
 
         {% if page == "monitoring" %}
@@ -62,7 +63,7 @@
         {% comment %} One tab per thing to calibrate; the tab is remembered per browser. The buttons of the
            tabs other than the guide camera greyed out, with the reason, until wilds-control implements them. {% endcomment %}
         <div x-data="{ tab: (() => { try { return localStorage.getItem('wilds-cal-tab') || 'guide-camera'; } catch { return 'guide-camera'; } })(),
-                       tabs: [['guide-camera', 'Guide camera'], ['lamps', 'Lamps'], ['slit', 'Slit'], ['adc', 'ADC'], ['focus', 'Focus'], ['science-cameras', 'Science cameras']],
+                       tabs: [['guide-camera', 'Guide camera'], ['lamps', 'Lamps'], ['slit', 'Slit'], ['cover', 'Cover'], ['adc', 'ADC'], ['focus', 'Focus'], ['science-cameras', 'Science cameras']],
                        pick(t) { this.tab = t; try { localStorage.setItem('wilds-cal-tab', t); } catch { /* private mode */ } } }">
             <ul class="nav nav-tabs flex-nowrap overflow-x-auto mb-3" role="tablist">
                 <template x-for="t in tabs" :key="t[0]">
@@ -74,7 +75,7 @@
             </ul>
 
             <div x-show="tab === 'guide-camera'">
-                <p class="text-body-secondary small">Dark and bias frames with the guide camera: a dark needs the light blocked (the TO does that on request), and the frames and their median are kept in a calibration session.</p>
+                <p class="text-body-secondary small">Dark and bias frames with the guide camera: a dark needs the instrument cover closed (tell the TO first), and the frames and their median are kept in a calibration session.</p>
                 {% include "components/guide_calibration.html" %}
             </div>
             <div x-show="tab === 'lamps'">
@@ -87,6 +88,10 @@
                 <div class="card mb-3"><div class="card-body py-2">{% include "components/slit_stage.html" %}</div></div>
                 <h6 class="mb-2">Guide camera and slit calibration</h6>
                 {% include "components/optics_calibration.html" %}
+            </div>
+            <div x-show="tab === 'cover'">
+                <p class="text-body-secondary small">The instrument cover: a rolling opaque cloth at the top of the LDT instrument cube. Closed, it blocks the light to WILDS (for the guide camera's darks and biases). Before moving it, tell the Telescope Operator: a dialog reminds you.</p>
+                <div class="card mb-3"><div class="card-body py-2">{% include "components/cover_controls.html" %}</div></div>
             </div>
             <div x-show="tab === 'adc'">
                 <div class="d-flex flex-wrap gap-2">

@@ -93,7 +93,7 @@ button.ui-pill { cursor: pointer; }
 .ui-pill-slot > *, .ui-pill-slot .ui-pill { flex: 1 1 auto; }
 .ui-pill-slot > div { display: flex; }
 .ui-pill-slot .ui-pill { text-align: left; }
-/* A pill that is a drop down (the Telescope Operator's LIGHT): the box looks like the value. */
+/* A pill that is a drop down (a select shown as a pill): the box looks like the value. */
 .ui-pill-select-box { background: transparent; color: inherit; border: 0; padding: 0 0.1em; font: inherit; font-weight: 400; cursor: pointer; }
 .ui-pill-select-box option { color: var(--bs-body-color); background: var(--bs-body-bg); }
 

@@ -153,7 +153,8 @@ def test_io_engineering_moved_to_eng(client: Client) -> None:
 def test_eng_page_asks_for_the_passphrase(client: Client) -> None:
     html = client.get("/eng/").content.decode()
     assert "$store.session.enterEngineering(this.passphrase)" in html
-    assert "$store.session.release()" in html
+    assert "$store.session.requestControl()" in html and "Request control" in html
+    assert "Release control" not in html and "release()" not in html
     assert "$store.wilds.warnings" in html  # configuration warnings
 
 
@@ -384,9 +385,13 @@ def test_the_test_job_card_is_on_the_io_operations_page_in_development(client: C
     assert "startDemo" not in client.get("/io/products/").content.decode()
 
 
-def test_request_control_is_hidden_once_control_is_granted(client: Client) -> None:
+def test_request_control_is_hidden_once_control_is_granted_except_in_engineering(
+    client: Client,
+) -> None:
     html = client.get("/io/").content.decode()
-    wrapper = "x-show=\"$store.session.controlStatus !== 'granted'\""
+    wrapper = (
+        "x-show=\"$store.session.controlStatus !== 'granted' || $store.session.engineering\""
+    )
     assert wrapper in html
     # the button sits inside that wrapper, not beside it
     assert html.index(wrapper) < html.index('@click="$store.session.requestControl()"')
@@ -516,26 +521,37 @@ def test_the_dock_has_a_splitter_that_keeps_its_width(client: Client) -> None:
     assert "wilds-camera-width" in script and "setPointerCapture" in script
 
 
-def test_every_page_shows_the_light_pill_and_the_calibration_card_asks_the_to(
+def test_every_page_shows_the_cover_pill_and_the_calibration_card_moves_the_cover(
     client: Client,
 ) -> None:
     for url in ("/eng/calibration/", "/to/"):
-        assert "lightView" in client.get(url).content.decode(), url
+        assert "coverView" in client.get(url).content.decode(), url
+        assert "lightView" not in client.get(url).content.decode(), url
     card = client.get("/eng/calibration/").content.decode()
-    assert "asLight('block-request')" in card and "asLight('restore-request')" in card
-    assert "Ask the TO to block the light" in card and "Ask the TO to restore the light" in card
+    assert "move('close')" in card and "move('open')" in card
+    assert "Close the cover" in card and "Open the cover" in card
     status = Path(finders.find("wilds/js/status.js")).read_text()
-    assert "light_path" in status and "get lightView" in status
+    assert "cover:" in status and "get coverView" in status and "light_path" not in status
 
 
-def test_the_to_page_sets_the_light_from_the_header_pill(client: Client) -> None:
+def test_the_engineering_calibration_page_has_a_cover_tab(client: Client) -> None:
+    page = client.get("/eng/calibration/").content.decode()
+    assert "['cover', 'Cover']" in page and "tab === 'cover'" in page
+    assert "wilds/js/cover.js" in page and 'x-data="coverControl"' in page
+
+
+def test_moving_the_cover_first_reminds_the_operator_to_tell_the_to(client: Client) -> None:
+    script = Path(finders.find("wilds/js/cover.js")).read_text()
+    assert "uiConfirm(" in script and "Telescope Operator" in script
+    assert script.index("uiConfirm(") < script.index("fetch(`${base}/cover/")
+    assert "/cover/${action}" in script
+
+
+def test_the_to_page_has_no_light_dropdown_any_more(client: Client) -> None:
     page = client.get("/to/").content.decode()
-    assert 'aria-label="Light to WILDS"' in page and "set($event.target.value)" in page
-    assert 'value="through"' in page and 'value="blocked"' in page
-    assert "Light to WILDS</div>" not in page and "lightDone" not in page
-    assert "Telescope</div>" not in page  # the TCS pill says it
+    assert "Light to WILDS" not in page and "ui-pill-select-box" not in page
     script = Path(finders.find("wilds/js/to.js")).read_text()
-    assert "/light-path/state" in script and "/light-path/refuse" not in script
+    assert "/light-path" not in script and "toLight" not in script
 
 
 def test_the_calibration_page_has_the_guide_camera_card(client: Client) -> None:
@@ -638,7 +654,7 @@ def test_each_entry_has_a_discard_button_that_asks_first(client: Client) -> None
 
 def test_every_header_indicator_is_the_same_pill(client: Client) -> None:
     html = client.get("/eng/").content.decode()
-    for label in ("Control", "TO", "TCS", "Mode", "WILDS", "Light"):
+    for label in ("Control", "TO", "TCS", "Mode", "WILDS", "Cover"):
         assert f'<span class="pill-label">{label}:</span>' in html, label
     assert 'class="badge ui-pill' in html and 'pill-label">Server:' in html
     css = Path(finders.find("wilds/css/tokens.css")).read_text()

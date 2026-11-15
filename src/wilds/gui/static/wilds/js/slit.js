@@ -89,9 +89,15 @@ document.addEventListener("alpine:init", () => {
                 lx: top[0] + 0.5, ly: top[1] + 0.5,
             };
         },
+        /** Only the Instrument Operator holding control (not engineering mode) turns the slit or switches
+         *  the view between streaming and single frames; everyone else just watches. */
+        get canOperate() {
+            const s = Alpine.store("session");
+            return !!s?.holder && !s.engineering;
+        },
         get show() {
             const cam = Alpine.store("camera");
-            return this.active && this.calOk && !!cam.meta && !!cam.url && !cam.view && cam.shown === "dock";
+            return this.calOk && !!cam.meta && !!cam.url && !cam.view && cam.shown === "dock";
         },
 
         // -- the sky <-> image geometry --------------------------------------------------------

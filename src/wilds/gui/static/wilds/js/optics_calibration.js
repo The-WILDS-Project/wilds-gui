@@ -140,8 +140,8 @@ document.addEventListener("alpine:init", () => {
             }
             if (w.guide_camera?.streaming) return "Stop the video first";
             if (this.job) return "The calibration is running";
-            const light = w.light_path?.state;
-            if (light === "blocked" || light === "block_requested") return "The light path is blocked: there is no sky to calibrate on";
+            const cover = w.cover?.state;
+            if (cover === "closed" || cover === "closing") return `The instrument cover is ${cover}: there is no sky to calibrate on`;
             const t = w.telescope?.telemetry;
             if (!t?.target) return "The telescope has no target: it must be on a star field (slew to one first)";
             if (t.in_position !== true) return "The telescope is not on target yet";

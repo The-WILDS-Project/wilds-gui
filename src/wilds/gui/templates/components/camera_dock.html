@@ -92,7 +92,7 @@ the dock as a thumbnail. Logic and the video socket: static/wilds/js/camera.js.
                 <text class="slit-label" :x="$store.slit.v.textX" :y="$store.slit.v.textY" :font-size="$store.slit.v.font" x-text="$store.slit.v.text"></text>
                 <rect class="slit-pickarea" x-show="$store.slit.pick" x="0" y="0" :width="$store.slit.v.w" :height="$store.slit.v.h"
                       @click="$store.slit.clickPick($event)"></rect>
-                <circle class="slit-handle" x-show="!$store.slit.pick" :cx="$store.slit.v.handle?.x" :cy="$store.slit.v.handle?.y" :r="$store.slit.v.handle?.r"
+                <circle class="slit-handle" x-show="!$store.slit.pick && $store.slit.canOperate" :cx="$store.slit.v.handle?.x" :cy="$store.slit.v.handle?.y" :r="$store.slit.v.handle?.r"
                         @pointerdown="$store.slit.startRotate($event)"></circle>
             </svg>
           </div>
@@ -132,10 +132,10 @@ the dock as a thumbnail. Logic and the video socket: static/wilds/js/camera.js.
              x-effect="sync()">
             <div x-tooltip="$store.jobs.canControl ? '' : $store.jobs.whyNot" class="d-flex flex-column gap-2">
                 <div class="d-flex gap-2">
-                    <button type="button" class="btn btn-sm btn-primary" x-show="!$store.camera.streaming"
+                    <button type="button" class="btn btn-sm btn-primary" x-show="$store.slit.canOperate && !$store.camera.streaming"
                             :disabled="!$store.jobs.canControl || $store.camera.busy || !$store.wilds.guide_camera"
                             @click="$store.camera.start()"><i class="bi bi-play-fill me-1"></i>Start live capture</button>
-                    <button type="button" class="btn btn-sm btn-outline-primary" x-show="$store.camera.streaming"
+                    <button type="button" class="btn btn-sm btn-outline-primary" x-show="$store.slit.canOperate && $store.camera.streaming"
                             :disabled="!$store.jobs.canControl || $store.camera.busy"
                             @click="$store.camera.stop()"><i class="bi bi-stop-fill me-1"></i>Stop live capture</button>
                     <a class="btn btn-sm btn-outline-secondary" target="_blank" rel="noopener"

@@ -1,0 +1,21 @@
+{% comment %}
+The instrument cover (plan §3.17, static/wilds/js/cover.js): its state and Close / Open. Whoever
+holds control may move it; a dialog first reminds them to tell the Telescope Operator.
+{% endcomment %}
+<div x-data="coverControl">
+    <div class="alert alert-danger py-2" role="alert" x-show="error">
+        <i class="bi bi-exclamation-octagon me-2"></i><span x-text="error"></span>
+    </div>
+    <div class="d-flex flex-wrap align-items-center gap-2">
+        {% include "components/pill.html" with view="$store.wilds.coverView" label="Cover" icon="bi-door-open" %}
+        <span :class="whyNot ? 'ui-unavailable' : ''" x-tooltip="whyNot || (state === 'closed' ? 'Already closed' : 'Block the light to WILDS')">
+            <button type="button" class="btn btn-sm btn-outline-primary" :disabled="closeDisabled || busy" @click="move('close')">
+                <i class="bi bi-door-closed me-1"></i>Close the cover</button>
+        </span>
+        <span :class="whyNot ? 'ui-unavailable' : ''" x-tooltip="whyNot || (state === 'open' ? 'Already open' : 'Let the light in')">
+            <button type="button" class="btn btn-sm btn-outline-primary" :disabled="openDisabled || busy" @click="move('open')">
+                <i class="bi bi-door-open me-1"></i>Open the cover</button>
+        </span>
+        <span class="small text-body-secondary" x-show="note" x-text="note"></span>
+    </div>
+</div>

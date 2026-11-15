@@ -36,7 +36,8 @@ function uiElement(tag, className, text) {
     return el;
 }
 
-/** Show a toast. type: info | success | warning | error. Success toasts hide after 3 s. */
+/** Show a toast. type: info | success | warning | error. Success toasts hide after 3 s. Returns the toast
+ *  element (or undefined), which hideToast() takes away again. */
 function showToast(type, title, message) {
     const container = document.getElementById("toast-container");
     if (!container) return;
@@ -75,6 +76,12 @@ function showToast(type, title, message) {
     // At most 3 visible, as in MAST.
     const toasts = container.querySelectorAll(".toast");
     if (toasts.length > 3) bootstrap.Toast.getInstance(toasts[0])?.hide();
+    return toastEl;
+}
+
+/** Take a toast away that showToast() returned, if it is still there. */
+function hideToast(toastEl) {
+    if (toastEl) bootstrap.Toast.getInstance(toastEl)?.hide();
 }
 
 /** Show a dismissible banner below the header, e.g. when wilds-control can't be reached. */
