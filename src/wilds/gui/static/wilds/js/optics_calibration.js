@@ -4,8 +4,10 @@
  *
  * "Start" is a job on wilds-control (POST /calibration/optics): with the telescope on a star field
  * it closes the slit, takes a frame and plate solves it (plate scale, which way north lies, parity),
- * opens the slit to a measuring width, takes a second frame, and finds the gap in the difference
- * (where the slit is, which way it points, its length and width). The result is a measurement only:
+ * opens the slit to a measuring width and to half of it, takes a frame at each, and finds the gap in
+ * the differences (where the slit is, which way it points, its length and width). Only one jaw of
+ * the slit moves, so the two gaps also give the fixed jaw's edge and the side the gap grows to.
+ * The result is a measurement only:
  * it is shown next to the calibration now in use, with whatever looks wrong, and "Apply" writes it
  * into the calibration (POST /calibration/optics/apply) with who and when. The two frames appear in
  * the guide-camera dock as they are taken. The stage card moves the slit to its presets or a width
@@ -42,6 +44,8 @@ document.addEventListener("alpine:init", () => {
         return data;
     }
 
+    /** Which way the gap grows from the slit's fixed jaw (the calibration's slit_side). */
+    const sideText = (v) => (v === 1 ? "right of the long axis" : v === -1 ? "left of the long axis" : "—");
     const num = (v, digits) => (v === null || v === undefined || Number.isNaN(v) ? "—" : Number(v).toFixed(digits));
 
     // -- the slit stage by hand ------------------------------------------------------------------
@@ -76,7 +80,7 @@ document.addEventListener("alpine:init", () => {
             const s = this.slit;
             const um = this.width * s.um_per_arcsec;
             if (!(this.width > 0) || um < s.min_um || um > s.max_um) {
-                return `Width: more than 0 and at most ${num((s.max_um - 0) / s.um_per_arcsec, 1)} arcsec`;
+                return `Width: ${num(s.min_um / s.um_per_arcsec, 1)} to ${num(s.max_um / s.um_per_arcsec, 1)} arcsec (the slit's hard stops)`;
             }
             return "";
         },
@@ -98,20 +102,26 @@ document.addEventListener("alpine:init", () => {
         exposure: 4,
         gain: null,          // null: the single-frame group's
         binning: "",         // "": the single-frame group's
-        width: 8,            // the measuring gap, arcsec
+        width: 4,            // the measuring gap, arcsec (the slit opens 0.5 to 4)
         cal: null,           // the calibration in use
         result: null,        // the last measurement
         error: null,
         busy: false,
         applying: false,
         wasRunning: null,
+        calVersion: null,    // the version of the calibration shown in the "now" column
 
         async init() {
             // the dock draws the detected slit on the frame it was found in (slit.js)
             this.$watch("result", (r) => { Alpine.store("slit").detected = r; });
             await Promise.all([this.loadCal(), this.loadLast()]);
             this.$watch("$store.wilds.jobs", () => this.jobsChanged());
-            this.$watch("$store.wilds.conf_versions", () => this.loadCal());
+            // $watch calls back on every status tick, not only when the version moves: read the
+            // calibration again only when its version has.
+            this.$watch("$store.wilds.conf_versions", () => {
+                const v = wilds().conf_versions?.["guide-camera/cal"];
+                if (v !== undefined && v !== this.calVersion) this.loadCal();
+            });
         },
 
         // -- the job in progress -------------------------------------------------------------
@@ -140,8 +150,8 @@ document.addEventListener("alpine:init", () => {
             }
             if (w.guide_camera?.streaming) return "Stop the video first";
             if (this.job) return "The calibration is running";
-            const light = w.light_path?.state;
-            if (light === "blocked" || light === "block_requested") return "The light path is blocked: there is no sky to calibrate on";
+            const cover = w.cover?.state;
+            if (cover === "closed" || cover === "closing") return `The instrument cover is ${cover}: there is no sky to calibrate on`;
             const t = w.telescope?.telemetry;
             if (!t?.target) return "The telescope has no target: it must be on a star field (slew to one first)";
             if (t.in_position !== true) return "The telescope is not on target yet";
@@ -149,7 +159,10 @@ document.addEventListener("alpine:init", () => {
             if (this.gain !== null && this.gain !== "" && !(this.gain >= 0 && this.gain <= 500)) return "Gain: 0 to 500";
             if (!(this.width > 0)) return "Measuring width: more than 0 arcsec";
             const s = w.slit;
-            if (s && this.width * s.um_per_arcsec > s.max_um) return "That width is beyond the slit's travel";
+            // The slit is measured at this width and at half of it: both must be in its range, and
+            // the half clear of the narrowest gap (which the closed frame already has).
+            if (s && this.width * s.um_per_arcsec > s.max_um) return `That width is beyond the slit's widest, ${num(s.max_um / s.um_per_arcsec, 1)} arcsec`;
+            if (s && (this.width / 2) * s.um_per_arcsec < 1.5 * s.closed_um) return `Half the width (the second gap) is too close to the slit's narrowest, ${num(s.closed_um / s.um_per_arcsec, 1)} arcsec: use at least ${num(3 * s.closed_um / s.um_per_arcsec, 1)} arcsec`;
             return "";
         },
         async start() {
@@ -168,7 +181,11 @@ document.addEventListener("alpine:init", () => {
         async loadCal() {
             try {
                 const response = await fetch(`${base}/config/guide-camera/cal`);
-                if (response.ok) this.cal = (await response.json()).values;
+                if (response.ok) {
+                    const view = await response.json();
+                    this.cal = view.values;
+                    this.calVersion = view.version;
+                }
             } catch { /* the "now" column stays empty */ }
         },
         async loadLast() {
@@ -186,8 +203,9 @@ document.addEventListener("alpine:init", () => {
                 row("Plate scale", "arcsec/px", m.plate_scale_arcsec_px, c.plate_scale_arcsec_px, 5),
                 row("Orientation (north at PA 0)", "°", m.orientation_deg, c.orientation_deg, 2),
                 { label: "Parity", unit: "", measured: String(m.parity), now: c.parity === null || c.parity === undefined ? "—" : String(c.parity) },
-                row("Slit centre x", "px", m.slit_x, c.slit_pixel_x, 1),
-                row("Slit centre y", "px", m.slit_y, c.slit_pixel_y, 1),
+                row("Fixed jaw edge x", "px", m.slit_x, c.slit_pixel_x, 1),
+                row("Fixed jaw edge y", "px", m.slit_y, c.slit_pixel_y, 1),
+                { label: "Gap grows to", unit: "", measured: sideText(m.slit_side), now: sideText(c.slit_side) },
                 row("Slit angle", "°", m.slit_angle_deg, c.slit_angle_deg ?? c.orientation_deg, 2),
                 row("Slit length", "arcsec", m.slit_length_arcsec, c.slit_length_arcsec, 2),
             ];

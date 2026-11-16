@@ -13,9 +13,9 @@ document.addEventListener("alpine:init", () => {
         jobs: [],                    // active jobs, then the last few finished (plan §3.14)
         guide_camera: null,          // {kind, streaming, exposing, settings, cooler, last_frame_id}; null until known
         system: null,                // WILDS as a whole: {opstate, operational, why_not_operational, components}; null until known
-        slit: null,                  // {position_um, width_arcsec, preset, moving, min_um, max_um, um_per_arcsec, lifecycle}; null until known
+        slit: null,                  // {position_um, width_arcsec, preset, moving, min_um, max_um, closed_um, open_um, um_per_arcsec, lifecycle}; null until known
         telescope: null,             // {kind, lifecycle, telemetry: {target, rot_pa, offsets, in_position, accepts_commands, ...}}; null until known
-        light_path: null,            // is light reaching WILDS: {state, since_ms, requested_by, note, refusal}; null until known
+        cover: null,                 // the instrument cover: {state: open|closed|opening|closing|unknown, since_ms, travel_s, sensed, cube: {to_wilds, ...}, ...}; null until known
         conf_versions: {},           // {"component/slice": version}: an open settings form compares it with what it loaded
         lastUpdate: null,
         control: { holder: null, engineering: false, holder_code: null, holder_info: null },
@@ -116,27 +116,48 @@ document.addEventListener("alpine:init", () => {
             }
             return { text: label[sys.opstate] || sys.opstate, cls: "ui-secondary", tip };
         },
-        /** What the header shows for the light path to WILDS (plan §3.17): {text, cls, tip, icon}. */
-        get lightView() {
-            const lp = this.light_path;
-            if (!lp) return { text: "unknown", cls: "ui-secondary", icon: "bi-brightness-alt-high", tip: "Light path not known yet" };
-            const minutes = this.time && lp.since_ms ? Math.max(0, Math.round((this.time.utc_ms - lp.since_ms) / 60000)) : 0;
-            const lines = [];
-            if (lp.requested_by) lines.push(`Asked by ${lp.requested_by}`);
-            if (lp.note) lines.push(`TO: ${lp.note}`);
-            if (lp.refusal) lines.push(`The TO could not: ${lp.refusal}`);
-            const tip = (extra) => [extra, ...lines].filter(Boolean).join("\n");
-            switch (lp.state) {
-                case "lit": return { text: "on", cls: "ui-success", icon: "bi-brightness-high", tip: tip("Light reaches WILDS") };
-                case "blocked":
-                    // A blocked instrument that nobody remembers is the risk: ask after a quarter of an hour.
+        /** The instrument cover's state, for the Cover tab's pill (the header's Light pill says what matters, plan §3.17): {text, cls, tip, icon}. */
+        get coverView() {
+            const c = this.cover;
+            if (!c) return { text: "unknown", cls: "ui-secondary", icon: "bi-door-open", tip: "The instrument cover's state is not known yet" };
+            const minutes = this.time && c.since_ms ? Math.max(0, Math.round((this.time.utc_ms - c.since_ms) / 60000)) : 0;
+            switch (c.state) {
+                case "open": return { text: "open", cls: "ui-success", icon: "bi-door-open", tip: "The instrument cover is open: light reaches WILDS" };
+                case "closed":
+                    // A closed cover that nobody remembers is the risk: warn after a quarter of an hour.
                     return minutes >= 15
-                        ? { text: `blocked ${minutes}m`, cls: "ui-warning", icon: "bi-moon", tip: tip("Still blocked: restore the light when the darks are done") }
-                        : { text: "blocked", cls: "ui-info", icon: "bi-moon", tip: tip("The TO has blocked the light to WILDS") };
-                case "block_requested": return { text: "block asked…", cls: "ui-info", icon: "bi-hourglass-split", tip: tip("Waiting for the TO to block the light") };
-                case "unblock_requested": return { text: "restore asked…", cls: "ui-info", icon: "bi-hourglass-split", tip: tip("Waiting for the TO to let the light in again") };
-                default: return { text: "unknown", cls: "ui-secondary", icon: "bi-brightness-alt-high", tip: tip("Nobody has said whether light reaches WILDS") };
+                        ? { text: `closed ${minutes}m`, cls: "ui-warning", icon: "bi-door-closed", tip: "Still closed: open it when the darks are done" }
+                        : { text: "closed", cls: "ui-info", icon: "bi-door-closed", tip: "The instrument cover is closed: no light reaches WILDS" };
+                case "opening": return { text: "opening…", cls: "ui-info", icon: "bi-hourglass-split", tip: "The instrument cover is opening" };
+                case "closing": return { text: "closing…", cls: "ui-info", icon: "bi-hourglass-split", tip: "The instrument cover is closing" };
+                default: return { text: "unknown", cls: "ui-secondary", icon: "bi-door-open", tip: "The instrument cube has not reported the cover, and nobody has moved it since wilds-control started" };
             }
+        },
+        /**
+         * Whether WILDS gets light from the instrument cube: the cover is open and the fold mirror
+         * that feeds WILDS sends the beam its way. {text, cls, tip, icon}: yes (green), no (red,
+         * with the reason), or unknown (grey) when the cube has not said.
+         */
+        get lightView() {
+            const c = this.cover;
+            const icon = "bi-lightbulb";
+            if (!c) return { text: "unknown", cls: "ui-secondary", icon, tip: "The instrument cover and the fold mirror are not known yet" };
+            const cube = c.cube;
+            const why = [];
+            if (c.state !== "open" && c.state !== "unknown") {
+                // A closed cover nobody remembers is the risk: say for how long it has been so.
+                const minutes = this.time && c.since_ms ? Math.max(0, Math.round((this.time.utc_ms - c.since_ms) / 60000)) : 0;
+                why.push(c.state === "closed" && minutes >= 1
+                    ? `the instrument cover has been closed for ${minutes} min (open it when the darks are done)`
+                    : `the instrument cover is ${c.state}`);
+            }
+            if (cube?.to_wilds === false) why.push(`fold mirror ${cube.fold_mirror} is ${String(cube.fold_mirror_state).toLowerCase()}, so the beam is not sent to WILDS`);
+            if (why.length) return { text: "no", cls: "ui-danger", icon, tip: `No light reaches WILDS: ${why.join("; ")}` };
+            if (c.state === "unknown" || cube?.to_wilds == null) {
+                const what = c.state === "unknown" ? "the instrument cover" : `fold mirror ${cube?.fold_mirror ?? "C"}`;
+                return { text: "unknown", cls: "ui-secondary", icon, tip: `Not known whether light reaches WILDS: the instrument cube has not reported ${what}` };
+            }
+            return { text: "yes", cls: "ui-success", icon, tip: `Light reaches WILDS: the instrument cover is open and fold mirror ${cube.fold_mirror} is ${String(cube.fold_mirror_state).toLowerCase()}` };
         },
         get tcsText() {
             const accepts = this.tcsAccepts;

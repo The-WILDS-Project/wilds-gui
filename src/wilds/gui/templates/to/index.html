@@ -9,24 +9,29 @@
 {% block session_badge %}{% endblock %}
 {% block session_js %}{% endblock %}
 {% block to_status %}{% endblock %}
-{% block light_status %}{% include "components/light_select.html" %}{% endblock %}
+{% block dock %}{% include "components/camera_dock.html" %}{% endblock %}
 {% block extra_js %}<script src="{% static 'wilds/js/to.js' %}?v={{ asset_version }}" defer></script>{% endblock %}
+{% block bottom %}
+<div class="ui-bottom">
+    <div class="card">
+        <div class="card-header"><i class="bi bi-activity me-2"></i>Instrument activity</div>
+        <div class="card-body">{% include "components/activity_board.html" %}</div>
+    </div>
+</div>
+{% endblock %}
 {% block content %}
 {# Single page, no sidebar (plan §3.11). Placeholders until wilds-control serves sessions. #}
 <div class="row g-3" x-data="toSessions()" x-init="start()">
-    <div class="col-lg-6">
+    <div class="col-xl-8">
         <div class="card mb-3" x-show="unlocked">
             <div class="card-header"><i class="bi bi-power me-2"></i>WILDS</div>
             <div class="card-body d-flex flex-wrap align-items-center gap-2">
                 <span>State:</span>
                 <span class="badge" :class="$store.wilds.opView.cls" x-text="$store.wilds.opView.text" x-tooltip="$store.wilds.opView.tip"></span>
-                <span :class="whyNotStartup ? 'ui-unavailable' : ''" x-tooltip="whyNotStartup">
-                    <button type="button" class="btn btn-sm btn-primary py-0" :disabled="!!whyNotStartup" @click="startup()">
-                        <i class="bi bi-play-fill me-1"></i>Start up</button>
-                </span>
-                <span :class="whyNotShutdown ? 'ui-unavailable' : ''" x-tooltip="whyNotShutdown">
-                    <button type="button" class="btn btn-sm btn-outline-danger py-0" :disabled="!!whyNotShutdown" @click="shutdown()">
-                        <i class="bi bi-stop-fill me-1"></i>Shut down</button>
+                <span :class="whyNotAction ? 'ui-unavailable' : ''" x-tooltip="whyNotAction">
+                    <button type="button" class="btn btn-sm py-0" :class="isStartedUp ? 'btn-outline-danger' : 'btn-primary'"
+                            :disabled="!!whyNotAction" @click="toggleWilds()">
+                        <i class="bi me-1" :class="isStartedUp ? 'bi-stop-fill' : 'bi-play-fill'"></i><span x-text="isStartedUp ? 'Shut down' : 'Start up'"></span></button>
                 </span>
             </div>
         </div>
@@ -77,14 +82,6 @@
                         </div>
                     </template>
                 </div>
-            </div>
-        </div>
-    </div>
-    <div class="col-lg-6">
-        <div class="card">
-            <div class="card-header"><i class="bi bi-activity me-2"></i>Instrument activity</div>
-            <div class="card-body">
-                {% include "components/activity_board.html" %}
             </div>
         </div>
     </div>

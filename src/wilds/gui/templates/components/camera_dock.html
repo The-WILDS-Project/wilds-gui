@@ -1,7 +1,7 @@
 {% load static %}
 {% comment %}
 The guide-camera dock (plan §3.8): the live view to the right of the page, on the Instrument
-Operator and Engineering pages. Three sizes: dock (the working size, with the controls),
+Operator, Engineering and Telescope Operator pages. Three sizes: dock (the working size, with the controls),
 thumb (a small picture to keep an eye on while working in a panel) and off (a rail with a
 button; the video socket is closed). The choice is remembered per browser; a narrow window shows
 the dock as a thumbnail. Logic and the video socket: static/wilds/js/camera.js.
@@ -30,6 +30,15 @@ the dock as a thumbnail. Logic and the video socket: static/wilds/js/camera.js.
             <strong>Guide camera</strong>
             <span class="dock-state text-body-secondary small" x-text="$store.camera.headline"></span>
             <span class="ms-auto d-flex gap-1">
+                {# Start / stop the live video: whoever holds control, the Instrument Operator or engineering (static/wilds/js/slit.js canStream), at any size. #}
+                <button type="button" class="btn btn-sm" :class="$store.camera.streaming ? 'btn-primary' : 'btn-outline-primary'"
+                        x-show="$store.slit.canStream && !$store.camera.view"
+                        :disabled="!$store.jobs.canControl || $store.camera.busy || (!$store.camera.streaming && !$store.wilds.guide_camera)"
+                        @click="$store.camera.streaming ? $store.camera.stop() : $store.camera.start()"
+                        x-tooltip="$store.camera.streaming ? 'Stop the live video' : 'Start the live video'"
+                        :aria-label="$store.camera.streaming ? 'Stop the live video' : 'Start the live video'">
+                    <i class="bi" :class="$store.camera.streaming ? 'bi-stop-fill' : 'bi-play-fill'"></i>
+                </button>
                 <button type="button" class="btn btn-sm btn-outline-secondary" :class="{ active: $store.camera.size === 'thumb' }"
                         @click="$store.camera.setSize('thumb')" x-tooltip="'Small picture'" aria-label="Small picture">
                     <i class="bi bi-dash-square"></i>
@@ -75,10 +84,15 @@ the dock as a thumbnail. Logic and the video socket: static/wilds/js/camera.js.
                     <g x-show="$store.slit.v.hasNow">
                         <rect class="slit-now" :x="$store.slit.v.now?.x" :y="$store.slit.v.now?.y" :width="$store.slit.v.now?.w" :height="$store.slit.v.now?.h"
                               :transform="$store.slit.v.now?.t"></rect>
+                        {# The fixed jaw's side of the gap, drawn apart from the rest of the rectangle: only the other jaw moves. #}
+                        <line class="slit-fixed" :x1="$store.slit.v.now?.edge" :y1="$store.slit.v.now?.y" :x2="$store.slit.v.now?.edge" :y2="$store.slit.v.now?.y2"
+                              :transform="$store.slit.v.now?.t"><title>Fixed jaw</title></line>
                     </g>
                     <g x-show="$store.slit.v.hasPending">
                         <rect class="slit-pending" :x="$store.slit.v.pending?.x" :y="$store.slit.v.pending?.y" :width="$store.slit.v.pending?.w" :height="$store.slit.v.pending?.h"
                               :transform="$store.slit.v.pending?.t" :stroke-dasharray="$store.slit.v.stroke * 4"></rect>
+                        <line class="slit-fixed slit-fixed-pending" :x1="$store.slit.v.pending?.edge" :y1="$store.slit.v.pending?.y" :x2="$store.slit.v.pending?.edge" :y2="$store.slit.v.pending?.y2"
+                              :transform="$store.slit.v.pending?.t"></line>
                     </g>
                     <line class="slit-centre" :x1="$store.slit.v.cx - $store.slit.v.tick" :y1="$store.slit.v.cy" :x2="$store.slit.v.cx + $store.slit.v.tick" :y2="$store.slit.v.cy"></line>
                     <line class="slit-centre" :x1="$store.slit.v.cx" :y1="$store.slit.v.cy - $store.slit.v.tick" :x2="$store.slit.v.cx" :y2="$store.slit.v.cy + $store.slit.v.tick"></line>
@@ -92,7 +106,7 @@ the dock as a thumbnail. Logic and the video socket: static/wilds/js/camera.js.
                 <text class="slit-label" :x="$store.slit.v.textX" :y="$store.slit.v.textY" :font-size="$store.slit.v.font" x-text="$store.slit.v.text"></text>
                 <rect class="slit-pickarea" x-show="$store.slit.pick" x="0" y="0" :width="$store.slit.v.w" :height="$store.slit.v.h"
                       @click="$store.slit.clickPick($event)"></rect>
-                <circle class="slit-handle" x-show="!$store.slit.pick" :cx="$store.slit.v.handle?.x" :cy="$store.slit.v.handle?.y" :r="$store.slit.v.handle?.r"
+                <circle class="slit-handle" x-show="!$store.slit.pick && $store.slit.canOperate" :cx="$store.slit.v.handle?.x" :cy="$store.slit.v.handle?.y" :r="$store.slit.v.handle?.r"
                         @pointerdown="$store.slit.startRotate($event)"></circle>
             </svg>
           </div>
@@ -132,10 +146,10 @@ the dock as a thumbnail. Logic and the video socket: static/wilds/js/camera.js.
              x-effect="sync()">
             <div x-tooltip="$store.jobs.canControl ? '' : $store.jobs.whyNot" class="d-flex flex-column gap-2">
                 <div class="d-flex gap-2">
-                    <button type="button" class="btn btn-sm btn-primary" x-show="!$store.camera.streaming"
+                    <button type="button" class="btn btn-sm btn-primary" x-show="$store.slit.canStream && !$store.camera.streaming"
                             :disabled="!$store.jobs.canControl || $store.camera.busy || !$store.wilds.guide_camera"
                             @click="$store.camera.start()"><i class="bi bi-play-fill me-1"></i>Start live capture</button>
-                    <button type="button" class="btn btn-sm btn-outline-primary" x-show="$store.camera.streaming"
+                    <button type="button" class="btn btn-sm btn-outline-primary" x-show="$store.slit.canStream && $store.camera.streaming"
                             :disabled="!$store.jobs.canControl || $store.camera.busy"
                             @click="$store.camera.stop()"><i class="bi bi-stop-fill me-1"></i>Stop live capture</button>
                     <a class="btn btn-sm btn-outline-secondary" target="_blank" rel="noopener"

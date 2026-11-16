@@ -4,6 +4,12 @@
  * from the guide camera's calibration (plate scale, slit pixel, orientation, parity, slit size,
  * served by GET /config/guide-camera/cal) and the telescope's own rotator angle.
  *
+ * Only one jaw of the slit moves: the other is fixed, so the gap does not open symmetrically. The
+ * calibration's slit pixel is the fixed jaw's edge and ``slit_side`` says which way the gap grows
+ * from it (+1 to the right of the long axis, -1 to the left); the gap is drawn from that edge to
+ * the stage's width, and its centre moves with half the width. The overlay turns about the
+ * point the telescope is pointed at: the middle of the gap at the working width.
+ *
  * The overlay's coordinates are the pixels of the frame on screen (binned, and cut to the ROI),
  * so the calibration, which is in full-sensor pixels, is mapped through the frame's ROI and
  * binning. The store is shared with the Acquisition tab's offset and rotation panels: a pending
@@ -14,7 +20,8 @@
 document.addEventListener("alpine:init", () => {
     const base = document.body.dataset.controlUrl;
     const rad = (d) => (d * Math.PI) / 180;
-    const EMPTY = { ok: false, vb: "0 0 1 1", w: 0, h: 0, cx: 0, cy: 0 };
+    const WORKING_WIDTH_ARCSEC = 1.0;  // the slit's working gap, when the calibration does not say
+    const EMPTY = { ok: false, vb: "0 0 1 1", w: 0, h: 0, cx: 0, cy: 0, tick: 0 };
 
     Alpine.store("slit", {
         active: false,        // the Acquisition tab is shown
@@ -61,7 +68,7 @@ document.addEventListener("alpine:init", () => {
         get calWhy() {
             return this.calOk ? "" : "The slit overlay needs the guide camera's calibration: plate scale, slit pixel, orientation, parity and slit length (Engineering → Calibration → Slit)";
         },
-        /** The corners of the slit found by the optics calibration, in the pixels of a frame taken with
+        /** The corners of the gap found by the optics calibration (its wider measuring gap, about its own middle), in the pixels of a frame taken with
          *  ``binning`` (and no window): the calibration is in unbinned sensor pixels. [[x, y] ...] as
          *  array indices, i.e. a pixel's centre is its index. */
         perimeter(d, binning = d.binning || 1) {
@@ -69,8 +76,8 @@ document.addEventListener("alpine:init", () => {
             const u = [-Math.sin(a), -Math.cos(a)], v = [Math.cos(a), -Math.sin(a)];
             const shift = (binning - 1) / 2;
             return [[1, 1], [1, -1], [-1, -1], [-1, 1]].map(([i, j]) => [
-                (d.slit_x + i * L * u[0] + j * W * v[0] - shift) / binning,
-                (d.slit_y + i * L * u[1] + j * W * v[1] - shift) / binning,
+                (d.gap_x + i * L * u[0] + j * W * v[0] - shift) / binning,
+                (d.gap_y + i * L * u[1] + j * W * v[1] - shift) / binning,
             ]);
         },
         /** What the dock draws for the detected slit, or null: only on the frame it was found in (the
@@ -89,9 +96,20 @@ document.addEventListener("alpine:init", () => {
                 lx: top[0] + 0.5, ly: top[1] + 0.5,
             };
         },
+        /** Whoever holds control (the Instrument Operator or engineering) may start and stop the live
+         *  video; the TO and viewers just watch. */
+        get canStream() {
+            return !!Alpine.store("session")?.holder;
+        },
+        /** Only the Instrument Operator holding control (not engineering mode) turns the slit with the
+         *  handle; everyone else just watches. */
+        get canOperate() {
+            const s = Alpine.store("session");
+            return !!s?.holder && !s.engineering;
+        },
         get show() {
             const cam = Alpine.store("camera");
-            return this.active && this.calOk && !!cam.meta && !!cam.url && !cam.view && cam.shown === "dock";
+            return this.calOk && !!cam.meta && !!cam.url && !cam.view && cam.shown === "dock";
         },
 
         // -- the sky <-> image geometry --------------------------------------------------------
@@ -109,11 +127,18 @@ document.addEventListener("alpine:init", () => {
             if (!this.calOk || !m) return null;
             const c = this.cal, b = m.binning || 1;
             const arc = c.plate_scale_arcsec_px * b;  // arcsec per screen pixel
+            const side = c.slit_side === -1 ? -1 : 1;
+            // The slit turns about the middle of the working gap, which is half the working width
+            // from the fixed edge, across the slit.
+            const work = c.slit_width_arcsec > 0 ? c.slit_width_arcsec : WORKING_WIDTH_ARCSEC;
+            const ang = rad(c.slit_angle_deg ?? c.orientation_deg);
+            const off = (side * work) / c.plate_scale_arcsec_px / 2;  // unbinned pixels
+            const bx = c.slit_pixel_x + off * Math.cos(ang), by = c.slit_pixel_y - off * Math.sin(ang);
             return {
-                w: m.width, h: m.height, arc,
-                cx: (c.slit_pixel_x - (m.roi ? m.roi.x : 0)) / b,
-                cy: (c.slit_pixel_y - (m.roi ? m.roi.y : 0)) / b,
-                len: c.slit_length_arcsec / arc, wid: this.slitWidth / arc,
+                w: m.width, h: m.height, arc, side,
+                cx: (bx - (m.roi ? m.roi.x : 0)) / b,
+                cy: (by - (m.roi ? m.roi.y : 0)) / b,
+                len: c.slit_length_arcsec / arc, wid: this.slitWidth / arc, work: work / arc,
             };
         },
         /** Unit vector of the slit's long axis for a sky PA, in the image. */
@@ -140,7 +165,11 @@ document.addEventListener("alpine:init", () => {
             const g = this.geo;
             if (!g) return EMPTY;
             const { z, tx, ty } = Alpine.store("camera").xf;  // marks keep their size on screen when zoomed
-            const slit = (pa) => ({ x: g.cx - g.wid / 2, y: g.cy - g.len / 2, w: g.wid, h: g.len, t: `rotate(${(this.angle(pa) - this.zeroError).toFixed(2)} ${g.cx} ${g.cy})` });
+            // The gap runs from the fixed edge (half the working width to one side of the pivot)
+            // out to the stage's width, on the side the gap grows to.
+            const edge = g.cx - (g.side * g.work) / 2;
+            // ``edge`` is also where the fixed jaw is: the dock marks that side of the rectangle apart.
+            const slit = (pa) => ({ x: g.side > 0 ? edge : edge - g.wid, y: g.cy - g.len / 2, w: g.wid, h: g.len, edge, y2: g.cy + g.len / 2, t: `rotate(${(this.angle(pa) - this.zeroError).toFixed(2)} ${g.cx} ${g.cy})` });
             const d = this.dir(this.shownPa);
             const reach = g.len / 2 + Math.max(14, g.w * 0.02) / z;
             const arm = (Math.min(g.w, g.h) * 0.07) / z;

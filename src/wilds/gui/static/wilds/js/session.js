@@ -18,6 +18,8 @@ document.addEventListener("alpine:init", () => {
     const PENDING_MS = 2000;
     const base = document.body.dataset.controlUrl;
 
+    let requestToast = null;   // the "Control requested" toast, taken away when the TO has answered
+
     Alpine.store("session", {
         ready: false,
         error: null,
@@ -62,7 +64,8 @@ document.addEventListener("alpine:init", () => {
         get local() {
             let request = { ok: true, why: "" };
             if (!this.ready) request = { ok: false, why: "Not connected to the server" };
-            else if (this.holder) request = { ok: false, why: "You already hold control" };
+            else if (this.holder && !this.engineering) request = { ok: false, why: "You already hold control" };
+            else if (this.requested) request = { ok: false, why: "Waiting for the Telescope Operator" };
             const notYet = { ok: false, why: "Not implemented on the server yet" };
             return {
                 request_control: request,
@@ -87,18 +90,6 @@ document.addEventListener("alpine:init", () => {
             await tick();  // pick up the lease token
         },
 
-        /** Give control up (the holder releases). */
-        async release() {
-            const response = await fetch(`${base}/control`, {
-                method: "DELETE",
-                headers: { "X-Session-Id": read(KEY_ID) || "" },
-            });
-            if (!response.ok) throw new Error(await problem(response));
-            this.holder = false;
-            this.engineering = false;
-            this.token = null;
-        },
-
         /** Ask for control; the TO grants it after you give them your name and short code. */
         async requestControl() {
             const id = read(KEY_ID);
@@ -112,7 +103,8 @@ document.addEventListener("alpine:init", () => {
                 schedule();
                 const to = Alpine.store("wilds").to.online === false
                     ? " The Telescope Operator is offline; the request waits for them." : "";
-                showToast("info", "Control requested",
+                hideToast(requestToast);
+                requestToast = showToast("info", "Control requested",
                     `Tell the Telescope Operator your name and code: ${this.name} ${this.code}.${to}`);
             } catch (e) {
                 showToast("error", "Could not request control", String(e.message || e));
@@ -172,6 +164,7 @@ document.addEventListener("alpine:init", () => {
         if (!response.ok) throw new Error(await problem(response));
         const hb = await response.json();
         const before = store.controlStatus;
+        const wasRequested = store.requested;
         store.name = hb.name;
         store.code = hb.code;
         store.holder = hb.holder;
@@ -184,6 +177,10 @@ document.addEventListener("alpine:init", () => {
         store.error = null;
         store.ready = true;
         const after = store.controlStatus;
+        if (wasRequested && !store.requested) {  // granted or refused (the toasts below say which)
+            hideToast(requestToast);
+            requestToast = null;
+        }
         if (before === "requested" && after === "refused") {
             showToast("warning", "Control request refused", store.refusalReason || "The Telescope Operator refused it.");
         } else if (before === "requested" && after === "granted") {

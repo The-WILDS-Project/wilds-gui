@@ -153,7 +153,8 @@ def test_io_engineering_moved_to_eng(client: Client) -> None:
 def test_eng_page_asks_for_the_passphrase(client: Client) -> None:
     html = client.get("/eng/").content.decode()
     assert "$store.session.enterEngineering(this.passphrase)" in html
-    assert "$store.session.release()" in html
+    assert "$store.session.requestControl()" in html and "Request control" in html
+    assert "Release control" not in html and "release()" not in html
     assert "$store.wilds.warnings" in html  # configuration warnings
 
 
@@ -384,9 +385,13 @@ def test_the_test_job_card_is_on_the_io_operations_page_in_development(client: C
     assert "startDemo" not in client.get("/io/products/").content.decode()
 
 
-def test_request_control_is_hidden_once_control_is_granted(client: Client) -> None:
+def test_request_control_is_hidden_once_control_is_granted_except_in_engineering(
+    client: Client,
+) -> None:
     html = client.get("/io/").content.decode()
-    wrapper = "x-show=\"$store.session.controlStatus !== 'granted'\""
+    wrapper = (
+        "x-show=\"$store.session.controlStatus !== 'granted' || $store.session.engineering\""
+    )
     assert wrapper in html
     # the button sits inside that wrapper, not beside it
     assert html.index(wrapper) < html.index('@click="$store.session.requestControl()"')
@@ -397,10 +402,6 @@ def test_operator_and_engineering_pages_have_the_camera_dock(client: Client, url
     html = client.get(url).content.decode()
     assert 'class="camera-dock"' in html and "wilds/js/camera.js" in html
     assert html.index('id="sidebar"') < html.index('class="camera-dock"')  # sidebar, main, dock
-
-
-def test_the_to_page_has_no_camera_dock(client: Client) -> None:
-    assert "camera-dock" not in client.get("/to/").content.decode()
 
 
 def test_engineering_pages_use_the_app_tooltips_not_native_titles(client: Client) -> None:
@@ -454,10 +455,10 @@ def test_every_page_header_shows_wilds_opstate(client: Client, url: str) -> None
 
 def test_the_to_page_offers_startup_and_shutdown_by_opstate(client: Client) -> None:
     to = client.get("/to/").content.decode()
-    assert '@click="startup()"' in to and '@click="shutdown()"' in to
+    assert '@click="toggleWilds()"' in to  # one button, see the test of the WILDS panel below
     text = Path(finders.find("wilds/js/to.js")).read_text()
-    # start up unless started up already, shut down unless shut down already
-    assert 'this.opstate === "startedup"' in text and 'this.opstate === "shutdown"' in text
+    # shut down when started up, start up in any other state
+    assert 'this.opstate === "startedup"' in text and "this.startup()" in text
     assert "/system/startup" in text and "/system/shutdown" in text
 
 
@@ -516,26 +517,39 @@ def test_the_dock_has_a_splitter_that_keeps_its_width(client: Client) -> None:
     assert "wilds-camera-width" in script and "setPointerCapture" in script
 
 
-def test_every_page_shows_the_light_pill_and_the_calibration_card_asks_the_to(
+def test_every_page_shows_the_cover_pill_and_the_calibration_card_moves_the_cover(
     client: Client,
 ) -> None:
     for url in ("/eng/calibration/", "/to/"):
-        assert "lightView" in client.get(url).content.decode(), url
+        page = client.get(url).content.decode()
+        assert "lightView" in page, url  # the header's Light pill says what the cover does
+        assert "Light cover:" not in page, url  # and the old Light cover pill is gone from it
+    assert "coverView" in client.get("/eng/calibration/").content.decode()  # the Cover tab's pill
     card = client.get("/eng/calibration/").content.decode()
-    assert "asLight('block-request')" in card and "asLight('restore-request')" in card
-    assert "Ask the TO to block the light" in card and "Ask the TO to restore the light" in card
+    assert "move('close')" in card and "move('open')" in card
+    assert "Close the cover" in card and "Open the cover" in card
     status = Path(finders.find("wilds/js/status.js")).read_text()
-    assert "light_path" in status and "get lightView" in status
+    assert "cover:" in status and "get coverView" in status and "light_path" not in status
 
 
-def test_the_to_page_sets_the_light_from_the_header_pill(client: Client) -> None:
+def test_the_engineering_calibration_page_has_a_cover_tab(client: Client) -> None:
+    page = client.get("/eng/calibration/").content.decode()
+    assert "['cover', 'Cover']" in page and "tab === 'cover'" in page
+    assert "wilds/js/cover.js" in page and 'x-data="coverControl"' in page
+
+
+def test_moving_the_cover_first_reminds_the_operator_to_tell_the_to(client: Client) -> None:
+    script = Path(finders.find("wilds/js/cover.js")).read_text()
+    assert "uiConfirm(" in script and "Telescope Operator" in script
+    assert script.index("uiConfirm(") < script.index("fetch(`${base}/cover/")
+    assert "/cover/${action}" in script
+
+
+def test_the_to_page_has_no_light_dropdown_any_more(client: Client) -> None:
     page = client.get("/to/").content.decode()
-    assert 'aria-label="Light to WILDS"' in page and "set($event.target.value)" in page
-    assert 'value="through"' in page and 'value="blocked"' in page
-    assert "Light to WILDS</div>" not in page and "lightDone" not in page
-    assert "Telescope</div>" not in page  # the TCS pill says it
+    assert "Light to WILDS" not in page and "ui-pill-select-box" not in page
     script = Path(finders.find("wilds/js/to.js")).read_text()
-    assert "/light-path/state" in script and "/light-path/refuse" not in script
+    assert "/light-path" not in script and "toLight" not in script
 
 
 def test_the_calibration_page_has_the_guide_camera_card(client: Client) -> None:
@@ -703,7 +717,7 @@ def test_the_acquisition_tab_adjusts_offsets_and_rotation_with_the_slit_overlay(
 
 def test_the_to_page_shows_the_tcs_but_has_nothing_to_approve(client: Client) -> None:
     page = client.get("/to/").content.decode()
-    assert "tcsView" in page and "answerPending" not in page and "pending" not in page
+    assert "tcsView" in page and "answerPending" not in page and "Approve" not in page
     script = Path(finders.find("wilds/js/to.js")).read_text()
     assert "/dev/telescope/" not in script and "answerPending" not in script
 
@@ -739,3 +753,121 @@ def test_explanations_are_an_info_icon_with_the_tooltip_on_it(client: Client) ->
     # the guide-camera dock's labels: the icon is inside the label, the tooltip is on the icon
     assert 'class="bi bi-info-circle ui-info-icon"' in dock
     assert "x-tooltip=\"'Exposure: 0.001 to 60 s'\"" in dock and "style=\"cursor: help;\"" not in dock
+
+
+def test_the_cover_shows_where_its_state_comes_from_and_whether_the_light_reaches_wilds(
+    client: Client,
+) -> None:
+    card = client.get("/eng/calibration/").content.decode()
+    assert "sensorText" in card and "lightPath" in card
+    script = Path(finders.find("wilds/js/cover.js")).read_text()
+    assert "c.sensed" in script and "to_wilds" in script
+    status = Path(finders.find("wilds/js/status.js")).read_text()
+    assert "get lightView" in status and "to_wilds === false" in status
+
+
+def test_the_light_pill_says_whether_wilds_gets_light_from_the_cube(client: Client) -> None:
+    html = client.get("/eng/").content.decode()
+    assert "$store.wilds.lightView" in html
+    status = Path(finders.find("wilds/js/status.js")).read_text()
+    view = status[status.index("get lightView()") : status.index("get tcsText()")]
+    assert '"yes"' in view and "ui-success" in view and '"no"' in view and "ui-danger" in view
+    assert "tip:" in view  # the reason, as a tooltip
+
+
+def test_the_slit_overlay_draws_a_gap_that_grows_from_the_fixed_jaw(client: Client) -> None:
+    script = Path(finders.find("wilds/js/slit.js")).read_text()
+    assert "slit_side" in script and "WORKING_WIDTH_ARCSEC" in script  # one jaw moves
+    assert "d.gap_x" in script  # the calibration's gap is drawn about its own middle
+    page = client.get("/eng/calibration/").content.decode()
+    assert "only one jaw moves" in page.lower()
+    optics = Path(finders.find("wilds/js/optics_calibration.js")).read_text()
+    assert "Fixed jaw edge x" in optics and "Gap grows to" in optics
+
+
+def test_the_to_page_has_the_same_dock_and_its_activity_panel_at_the_bottom(client: Client) -> None:
+    html = client.get("/to/").content.decode()
+    assert 'class="camera-dock"' in html and "wilds/js/camera.js" in html  # the same dock
+    assert html.count("activity_board") <= 1 and 'class="ui-bottom"' in html
+    # the activity panel is below the main area (after the dock), not a column beside the controls
+    assert html.index('class="camera-dock"') < html.index('class="ui-bottom"')
+    assert html.index("Instrument activity") > html.index('class="camera-dock"')
+
+
+def test_the_dock_has_a_start_stop_button_for_whoever_holds_control(client: Client) -> None:
+    dock = client.get("/io/operations/").content.decode()
+    head = dock[dock.index('class="dock-head"') : dock.index('class="dock-viewbar')]
+    assert "$store.slit.canStream" in head and "canOperate" not in head  # a holder, engineering too
+    script = Path(finders.find("wilds/js/slit.js")).read_text()
+    body = script[script.index("get canStream()") :]
+    stream = body[: body.index("},")]
+    assert "holder" in stream and "engineering" not in stream  # not the TO, not a viewer
+    assert "$store.slit.canOperate" in dock  # the slit's handle is still the operator's only
+    assert "$store.camera.start()" in head and "$store.camera.stop()" in head
+    assert "bi-stop-fill" in head and "bi-play-fill" in head
+
+
+def test_the_fixed_jaw_is_marked_apart_from_the_rest_of_the_slit_rectangle(client: Client) -> None:
+    dock = client.get("/io/operations/").content.decode()
+    assert 'class="slit-fixed"' in dock and "slit-fixed-pending" in dock
+    css = Path(finders.find("wilds/css/camera.css")).read_text()
+    assert ".slit-fixed" in css and ".slit-now" in css
+    now = css[css.index(".slit-now") :].split("}")[0]
+    fixed = css[css.index(".slit-fixed") :].split("}")[0]
+    assert now.split("stroke:")[1].split(";")[0] != fixed.split("stroke:")[1].split(";")[0]  # another colour
+    script = Path(finders.find("wilds/js/slit.js")).read_text()
+    assert "edge," in script  # the line is where the gap starts, turning with the rectangle
+
+
+def test_the_io_slit_panel_is_scaled_to_the_stages_range_between_its_hard_stops(
+    client: Client,
+) -> None:
+    script = Path(finders.find("wilds/js/acquisition.js")).read_text()
+    stage = script[script.index('Alpine.data("acquisitionSlit"') :]
+    assert "get maxUm() { return this.slit?.max_um" in stage  # the upper hard stop, 4 arcsec
+    assert "get minUm() { return this.slit?.min_um" in stage  # the lower one, 0.5 arcsec
+    assert "open_um" not in stage and "s.max_um" not in stage
+    page = client.get("/io/operations/").content.decode()
+    assert "percent of its range" in page and "narrowest (" in page and "widest (" in page
+
+
+def test_a_tooltip_that_is_open_is_not_touched_unless_its_text_changed(client: Client) -> None:
+    script = Path(finders.find("wilds/js/ui.js")).read_text()
+    directive = script[script.index('Alpine.directive("tooltip"') :].split("});\n});")[0]
+    # the status stream re-evaluates every expression with each video frame; setContent re-shows
+    # an open tooltip, so an unchanged text must return before it
+    assert "if (text === last) return;" in directive
+    assert directive.index("if (text === last) return;") < directive.index("setContent(")
+
+
+def test_the_to_wilds_panel_has_one_button_for_the_action_that_applies(client: Client) -> None:
+    page = client.get("/to/").content.decode()
+    panel = page[page.index('class="bi bi-power me-2"></i>WILDS') : page.index("bi-person-check")]
+    assert panel.count("<button") == 1  # not a Start up and a Shut down side by side
+    assert "isStartedUp ? 'Shut down' : 'Start up'" in panel and "toggleWilds()" in panel
+    script = Path(finders.find("wilds/js/to.js")).read_text()
+    assert 'get isStartedUp() { return this.opstate === "startedup"; }' in script
+    assert "this.isStartedUp ? this.shutdown() : this.startup()" in script
+
+
+def test_engineering_holding_control_may_command_the_telescope_from_the_adjust_panels(
+    client: Client,
+) -> None:
+    script = Path(finders.find("wilds/js/acquisition.js")).read_text()
+    # wilds-control lets the engineering lease command the telescope, so the panels must not refuse it
+    assert "Engineering mode does not command the telescope" not in script
+    assert "s.engineering" not in script
+
+
+def test_a_pending_adjustment_survives_the_status_stream_after_a_job_has_finished(
+    client: Client,
+) -> None:
+    script = Path(finders.find("wilds/js/acquisition.js")).read_text()
+    # Alpine's $watch calls back on every change of anything its getter read (the status stream
+    # replaces the jobs about once a second), so "state is done" alone cleared the pending offset
+    # and angle again and again after the first job. The job handled is remembered instead.
+    assert "function whenDone(component, then)" in script and "id !== handled" in script
+    assert script.count("whenDone(this,") == 2  # the offsets and the rotation panels
+    assert '(state) => { if (state === "done")' not in script and "if (state === \"done\") {" not in script
+    optics = Path(finders.find("wilds/js/optics_calibration.js")).read_text()
+    assert "v !== this.calVersion" in optics  # the calibration is read again only when its version moves

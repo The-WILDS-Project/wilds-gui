@@ -17,38 +17,6 @@ document.addEventListener("alpine:init", () => {
     const BEAT = "setInterval(() => postMessage(0), " + POLL_MS + ");";
     const base = document.body.dataset.controlUrl;
 
-    // The header's LIGHT pill (plan §3.17): a drop down that tells wilds-control whether the light
-    // to WILDS is blocked or goes through, which also answers a request of the instrument operator.
-    // It is outside the page's component, so it reads the passphrase itself; the new state comes
-    // back in the status stream.
-    Alpine.data("toLight", () => ({
-        get light() { return Alpine.store("wilds").light_path; },
-        get passphrase() {
-            try { return sessionStorage.getItem(KEY) || ""; } catch { return ""; }
-        },
-        async set(choice) {
-            const state = choice === "blocked" ? "blocked" : "lit";
-            if (!this.passphrase) {
-                showToast("error", "Unlock first", "Enter the Telescope Operator passphrase below");
-                return;
-            }
-            try {
-                const response = await fetch(`${base}/light-path/state`, {
-                    method: "PUT",
-                    headers: { "X-TO-Passphrase": this.passphrase, "Content-Type": "application/json" },
-                    body: JSON.stringify({ state }),
-                });
-                if (!response.ok) {
-                    const body = await response.json().catch(() => ({}));
-                    throw new Error(body.message || body.detail || `HTTP ${response.status}`);
-                }
-                showToast("success", state === "blocked" ? "Light blocked" : "Light goes through");
-            } catch (e) {
-                showToast("error", "Action failed", String(e.message || e));
-            }
-        },
-    }));
-
     Alpine.data("toSessions", () => ({
         passphrase: sessionStorage.getItem(KEY) || "",
         entry: "",
@@ -63,20 +31,18 @@ document.addEventListener("alpine:init", () => {
 
         get unlocked() { return this.passphrase !== ""; },
 
-        // -- start-up and shutdown of WILDS (plan §3.16): offered whenever they would change
-        // something, and not while one is running.
+        // -- start-up and shutdown of WILDS (plan §3.16): one button, the one that applies. WILDS that
+        // is started up offers "Shut down"; in any other state (shut down, initialized, a start-up
+        // that did not finish) it offers "Start up". Neither is offered while one is running.
         get wilds() { return Alpine.store("wilds"); },
         get opstate() { return this.wilds.system?.opstate ?? null; },
-        get whyNotStartup() {
+        get isStartedUp() { return this.opstate === "startedup"; },
+        get whyNotAction() {
             if (this.opstate === null) return "WILDS state not known yet";
             if (this.wilds.busyWith) return `WILDS is ${this.wilds.busyWith}`;
-            return this.opstate === "startedup" ? "WILDS is started up already" : "";
+            return "";
         },
-        get whyNotShutdown() {
-            if (this.opstate === null) return "WILDS state not known yet";
-            if (this.wilds.busyWith) return `WILDS is ${this.wilds.busyWith}`;
-            return this.opstate === "shutdown" ? "WILDS is shut down already" : "";
-        },
+        toggleWilds() { return this.isStartedUp ? this.shutdown() : this.startup(); },
         async startup() { await this.act("/system/startup", {}, "Start-up begun"); },
         async shutdown() {
             const ok = await uiConfirm("Shut WILDS down? Components stop what they are doing and the cooler is switched off.", {
