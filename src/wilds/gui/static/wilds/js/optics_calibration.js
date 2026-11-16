@@ -80,7 +80,7 @@ document.addEventListener("alpine:init", () => {
             const s = this.slit;
             const um = this.width * s.um_per_arcsec;
             if (!(this.width > 0) || um < s.min_um || um > s.max_um) {
-                return `Width: more than 0 and at most ${num((s.max_um - 0) / s.um_per_arcsec, 1)} arcsec`;
+                return `Width: ${num(s.min_um / s.um_per_arcsec, 1)} to ${num(s.max_um / s.um_per_arcsec, 1)} arcsec (the slit's hard stops)`;
             }
             return "";
         },
@@ -102,7 +102,7 @@ document.addEventListener("alpine:init", () => {
         exposure: 4,
         gain: null,          // null: the single-frame group's
         binning: "",         // "": the single-frame group's
-        width: 8,            // the measuring gap, arcsec
+        width: 4,            // the measuring gap, arcsec (the slit opens 0.5 to 4)
         cal: null,           // the calibration in use
         result: null,        // the last measurement
         error: null,
@@ -153,7 +153,10 @@ document.addEventListener("alpine:init", () => {
             if (this.gain !== null && this.gain !== "" && !(this.gain >= 0 && this.gain <= 500)) return "Gain: 0 to 500";
             if (!(this.width > 0)) return "Measuring width: more than 0 arcsec";
             const s = w.slit;
-            if (s && this.width * s.um_per_arcsec > s.max_um) return "That width is beyond the slit's travel";
+            // The slit is measured at this width and at half of it: both must be in its range, and
+            // the half clear of the narrowest gap (which the closed frame already has).
+            if (s && this.width * s.um_per_arcsec > s.max_um) return `That width is beyond the slit's widest, ${num(s.max_um / s.um_per_arcsec, 1)} arcsec`;
+            if (s && (this.width / 2) * s.um_per_arcsec < 1.5 * s.closed_um) return `Half the width (the second gap) is too close to the slit's narrowest, ${num(s.closed_um / s.um_per_arcsec, 1)} arcsec: use at least ${num(3 * s.closed_um / s.um_per_arcsec, 1)} arcsec`;
             return "";
         },
         async start() {

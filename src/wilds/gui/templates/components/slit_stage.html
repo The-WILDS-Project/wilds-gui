@@ -1,6 +1,6 @@
 {% comment %}
 The slit stage by hand (plan §3.3, static/wilds/js/optics_calibration.js): where it is, in mm and as
-the gap on the sky, and a move to a preset (closed: no light through; open: the stage's full travel)
+the gap on the sky, and a move to a preset (closed: the narrowest, 0.5 arcsec, the lower hard stop; open: the widest, 4 arcsec, the upper one)
 or to a width. Moving needs control; a calibration run has the stage to itself.
 {% endcomment %}
 <div x-data="slitStage()">
@@ -26,7 +26,7 @@ or to a width. Moving needs control; a calibration run has the stage to itself.
             <div>
                 <label class="form-label small mb-1" for="ss-width">Gap</label>
                 <div class="input-group input-group-sm" style="width: 9rem;">
-                    <input id="ss-width" type="number" class="form-control" min="0" step="any" x-model.number="width" aria-label="Gap in arcseconds">
+                    <input id="ss-width" type="number" class="form-control" step="any" x-model.number="width" aria-label="Gap in arcseconds">
                     <span class="input-group-text">arcsec</span>
                 </div>
             </div>

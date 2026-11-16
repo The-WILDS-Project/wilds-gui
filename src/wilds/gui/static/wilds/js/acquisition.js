@@ -234,20 +234,21 @@ document.addEventListener("alpine:init", () => {
         get slit() { return wilds().slit; },
         get known() { return this.slit?.position_um !== null && this.slit?.position_um !== undefined; },
         get perArcsec() { return this.slit?.um_per_arcsec || 124.69; },
-        get maxUm() { return this.slit?.max_um ?? 21000; },
-        get minUm() { return this.slit?.min_um ?? 0; },
-        /** The stage's opening now: "10500 µm · 84.2 arcsec · 50 % of travel". */
+        // The stage's range is the slit's, fixed by hard stops: 0.5 to 4 arcsec.
+        get maxUm() { return this.slit?.max_um ?? 498.76; },
+        get minUm() { return this.slit?.min_um ?? 62.345; },
+        /** The stage's opening now: "250 µm · 2.00 arcsec · 50.1 % open" (of its range, between the hard stops). */
         get nowText() {
             const s = this.slit;
             if (!s || !this.known) return "unknown";
             const um = s.position_um;
-            const span = (s.max_um - s.min_um) || 1;
-            const text = `${um.toFixed(um < 100 ? 1 : 0)} µm · ${(um / this.perArcsec).toFixed(um < 100 ? 3 : 2)} arcsec · ${(100 * (um - s.min_um) / span).toFixed(1)} % open`;
+            const span = (this.maxUm - this.minUm) || 1;
+            const text = `${um.toFixed(um < 100 ? 1 : 0)} µm · ${(um / this.perArcsec).toFixed(um < 100 ? 3 : 2)} arcsec · ${(100 * (um - this.minUm) / span).toFixed(1)} % open`;
             return s.moving ? `${text} (moving…)` : text;
         },
         get percentNow() {
             const s = this.slit;
-            return this.known ? Math.max(0, Math.min(100, 100 * (s.position_um - s.min_um) / ((s.max_um - s.min_um) || 1))) : 0;
+            return this.known ? Math.max(0, Math.min(100, 100 * (s.position_um - this.minUm) / ((this.maxUm - this.minUm) || 1))) : 0;
         },
         get presetText() { return this.slit?.preset ? `at the ${this.slit.preset} preset` : ""; },
 
@@ -284,7 +285,7 @@ document.addEventListener("alpine:init", () => {
             }
             if (this.pendingUm === null) return "Move the slider or type a value first";
             if (this.pendingUm < this.minUm || this.pendingUm > this.maxUm) {
-                return `The gap is 0 to ${(this.maxUm / this.perArcsec).toFixed(1)} arcsec (${this.minUm} to ${this.maxUm} µm)`;
+                return `The gap is ${(this.minUm / this.perArcsec).toFixed(1)} to ${(this.maxUm / this.perArcsec).toFixed(1)} arcsec (${this.minUm.toFixed(0)} to ${this.maxUm.toFixed(0)} µm)`;
             }
             return "";
         },

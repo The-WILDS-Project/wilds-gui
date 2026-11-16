@@ -96,8 +96,13 @@ document.addEventListener("alpine:init", () => {
                 lx: top[0] + 0.5, ly: top[1] + 0.5,
             };
         },
-        /** Only the Instrument Operator holding control (not engineering mode) turns the slit or switches
-         *  the view between streaming and single frames; everyone else just watches. */
+        /** Whoever holds control (the Instrument Operator or engineering) may start and stop the live
+         *  video; the TO and viewers just watch. */
+        get canStream() {
+            return !!Alpine.store("session")?.holder;
+        },
+        /** Only the Instrument Operator holding control (not engineering mode) turns the slit with the
+         *  handle; everyone else just watches. */
         get canOperate() {
             const s = Alpine.store("session");
             return !!s?.holder && !s.engineering;
@@ -163,7 +168,8 @@ document.addEventListener("alpine:init", () => {
             // The gap runs from the fixed edge (half the working width to one side of the pivot)
             // out to the stage's width, on the side the gap grows to.
             const edge = g.cx - (g.side * g.work) / 2;
-            const slit = (pa) => ({ x: g.side > 0 ? edge : edge - g.wid, y: g.cy - g.len / 2, w: g.wid, h: g.len, t: `rotate(${(this.angle(pa) - this.zeroError).toFixed(2)} ${g.cx} ${g.cy})` });
+            // ``edge`` is also where the fixed jaw is: the dock marks that side of the rectangle apart.
+            const slit = (pa) => ({ x: g.side > 0 ? edge : edge - g.wid, y: g.cy - g.len / 2, w: g.wid, h: g.len, edge, t: `rotate(${(this.angle(pa) - this.zeroError).toFixed(2)} ${g.cx} ${g.cy})` });
             const d = this.dir(this.shownPa);
             const reach = g.len / 2 + Math.max(14, g.w * 0.02) / z;
             const arm = (Math.min(g.w, g.h) * 0.07) / z;

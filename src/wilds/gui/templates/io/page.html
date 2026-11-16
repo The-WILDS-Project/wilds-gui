@@ -261,7 +261,7 @@
                     <div class="col-9">
                         <code x-text="nowText"></code>
                         <span class="small text-body-secondary ms-2" x-text="presetText"></span>
-                        <div class="progress mt-1" style="max-width: 18rem; height: 0.4rem;" role="progressbar" aria-label="Slit opening, percent of travel">
+                        <div class="progress mt-1" style="max-width: 18rem; height: 0.4rem;" role="progressbar" aria-label="Slit opening, percent of its range">
                             <div class="progress-bar" :style="'width: ' + percentNow + '%'"></div></div>
                     </div>
                 </div>
@@ -271,7 +271,7 @@
                         <input id="slit-slider" type="range" class="form-range" :min="minUm" :max="maxUm" step="1"
                                :value="um" @input="setUm($event.target.value)" aria-label="Slit opening in microns">
                         <div class="d-flex justify-content-between small text-body-secondary">
-                            <span>closed</span><span>open (<span x-text="Math.round(maxUm)"></span> µm, <span x-text="(maxUm / perArcsec).toFixed(0)"></span> arcsec)</span></div>
+                            <span>narrowest (<span x-text="Math.round(minUm)"></span> µm, <span x-text="(minUm / perArcsec).toFixed(1)"></span> arcsec)</span><span>widest (<span x-text="Math.round(maxUm)"></span> µm, <span x-text="(maxUm / perArcsec).toFixed(1)"></span> arcsec)</span></div>
                     </div>
                 </div>
                 <div class="row mb-2 align-items-center">

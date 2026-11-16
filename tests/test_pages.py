@@ -794,9 +794,38 @@ def test_the_to_page_has_the_same_dock_and_its_activity_panel_at_the_bottom(clie
     assert html.index("Instrument activity") > html.index('class="camera-dock"')
 
 
-def test_the_dock_has_a_start_stop_button_for_the_operator_holding_control(client: Client) -> None:
+def test_the_dock_has_a_start_stop_button_for_whoever_holds_control(client: Client) -> None:
     dock = client.get("/io/operations/").content.decode()
     head = dock[dock.index('class="dock-head"') : dock.index('class="dock-viewbar')]
-    assert "$store.slit.canOperate" in head  # not the TO, not engineering, not a viewer
+    assert "$store.slit.canStream" in head and "canOperate" not in head  # a holder, engineering too
+    script = Path(finders.find("wilds/js/slit.js")).read_text()
+    body = script[script.index("get canStream()") :]
+    stream = body[: body.index("},")]
+    assert "holder" in stream and "engineering" not in stream  # not the TO, not a viewer
+    assert "$store.slit.canOperate" in dock  # the slit's handle is still the operator's only
     assert "$store.camera.start()" in head and "$store.camera.stop()" in head
     assert "bi-stop-fill" in head and "bi-play-fill" in head
+
+
+def test_the_fixed_jaw_is_marked_apart_from_the_rest_of_the_slit_rectangle(client: Client) -> None:
+    dock = client.get("/io/operations/").content.decode()
+    assert 'class="slit-fixed"' in dock and "slit-fixed-pending" in dock
+    css = Path(finders.find("wilds/css/camera.css")).read_text()
+    assert ".slit-fixed" in css and ".slit-now" in css
+    now = css[css.index(".slit-now") :].split("}")[0]
+    fixed = css[css.index(".slit-fixed") :].split("}")[0]
+    assert now.split("stroke:")[1].split(";")[0] != fixed.split("stroke:")[1].split(";")[0]  # another colour
+    script = Path(finders.find("wilds/js/slit.js")).read_text()
+    assert "edge," in script  # the line is where the gap starts, turning with the rectangle
+
+
+def test_the_io_slit_panel_is_scaled_to_the_stages_range_between_its_hard_stops(
+    client: Client,
+) -> None:
+    script = Path(finders.find("wilds/js/acquisition.js")).read_text()
+    stage = script[script.index('Alpine.data("acquisitionSlit"') :]
+    assert "get maxUm() { return this.slit?.max_um" in stage  # the upper hard stop, 4 arcsec
+    assert "get minUm() { return this.slit?.min_um" in stage  # the lower one, 0.5 arcsec
+    assert "open_um" not in stage and "s.max_um" not in stage
+    page = client.get("/io/operations/").content.decode()
+    assert "percent of its range" in page and "narrowest (" in page and "widest (" in page

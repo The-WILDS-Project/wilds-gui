@@ -36,7 +36,7 @@ and is applied only by the button. The two frames appear in the guide-camera doc
         </div>
         <div>
             <label class="form-label small mb-1" for="oc-width">Measuring gap
-                {% include "components/info.html" with tip="'The slit is opened to this width for the second frame, and to half of it for a third: a strip that is narrower than the slit is long, wide enough to find easily. Fully open is wider than the slit is long. Only one jaw moves, so the two gaps also tell where the fixed jaw is and which way the gap grows.'" %}</label>
+                {% include "components/info.html" with tip="'The slit is opened to this width for the second frame, and to half of it for a third: 4 arcsec, the widest the slit opens, is the easiest to find (the slit opens from 0.5 to 4 arcsec). Only one jaw moves, so the two gaps also tell where the fixed jaw is and which way the gap grows.'" %}</label>
             <div class="input-group input-group-sm" style="width: 9rem;">
                 <input id="oc-width" type="number" class="form-control" min="0" step="any" x-model.number="width">
                 <span class="input-group-text">arcsec</span>

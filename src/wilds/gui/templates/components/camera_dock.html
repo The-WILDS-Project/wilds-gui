@@ -30,9 +30,9 @@ the dock as a thumbnail. Logic and the video socket: static/wilds/js/camera.js.
             <strong>Guide camera</strong>
             <span class="dock-state text-body-secondary small" x-text="$store.camera.headline"></span>
             <span class="ms-auto d-flex gap-1">
-                {# Start / stop the live video: the Instrument Operator holding control only (static/wilds/js/slit.js canOperate), at any size. #}
+                {# Start / stop the live video: whoever holds control, the Instrument Operator or engineering (static/wilds/js/slit.js canStream), at any size. #}
                 <button type="button" class="btn btn-sm" :class="$store.camera.streaming ? 'btn-primary' : 'btn-outline-primary'"
-                        x-show="$store.slit.canOperate && !$store.camera.view"
+                        x-show="$store.slit.canStream && !$store.camera.view"
                         :disabled="!$store.jobs.canControl || $store.camera.busy || (!$store.camera.streaming && !$store.wilds.guide_camera)"
                         @click="$store.camera.streaming ? $store.camera.stop() : $store.camera.start()"
                         x-tooltip="$store.camera.streaming ? 'Stop the live video' : 'Start the live video'"
@@ -84,10 +84,15 @@ the dock as a thumbnail. Logic and the video socket: static/wilds/js/camera.js.
                     <g x-show="$store.slit.v.hasNow">
                         <rect class="slit-now" :x="$store.slit.v.now?.x" :y="$store.slit.v.now?.y" :width="$store.slit.v.now?.w" :height="$store.slit.v.now?.h"
                               :transform="$store.slit.v.now?.t"></rect>
+                        {# The fixed jaw's side of the gap, drawn apart from the rest of the rectangle: only the other jaw moves. #}
+                        <line class="slit-fixed" :x1="$store.slit.v.now?.edge" :y1="$store.slit.v.now?.y" :x2="$store.slit.v.now?.edge" :y2="$store.slit.v.now?.y + $store.slit.v.now?.h"
+                              :transform="$store.slit.v.now?.t"><title>Fixed jaw</title></line>
                     </g>
                     <g x-show="$store.slit.v.hasPending">
                         <rect class="slit-pending" :x="$store.slit.v.pending?.x" :y="$store.slit.v.pending?.y" :width="$store.slit.v.pending?.w" :height="$store.slit.v.pending?.h"
                               :transform="$store.slit.v.pending?.t" :stroke-dasharray="$store.slit.v.stroke * 4"></rect>
+                        <line class="slit-fixed slit-fixed-pending" :x1="$store.slit.v.pending?.edge" :y1="$store.slit.v.pending?.y" :x2="$store.slit.v.pending?.edge" :y2="$store.slit.v.pending?.y + $store.slit.v.pending?.h"
+                              :transform="$store.slit.v.pending?.t"></line>
                     </g>
                     <line class="slit-centre" :x1="$store.slit.v.cx - $store.slit.v.tick" :y1="$store.slit.v.cy" :x2="$store.slit.v.cx + $store.slit.v.tick" :y2="$store.slit.v.cy"></line>
                     <line class="slit-centre" :x1="$store.slit.v.cx" :y1="$store.slit.v.cy - $store.slit.v.tick" :x2="$store.slit.v.cx" :y2="$store.slit.v.cy + $store.slit.v.tick"></line>
@@ -141,10 +146,10 @@ the dock as a thumbnail. Logic and the video socket: static/wilds/js/camera.js.
              x-effect="sync()">
             <div x-tooltip="$store.jobs.canControl ? '' : $store.jobs.whyNot" class="d-flex flex-column gap-2">
                 <div class="d-flex gap-2">
-                    <button type="button" class="btn btn-sm btn-primary" x-show="$store.slit.canOperate && !$store.camera.streaming"
+                    <button type="button" class="btn btn-sm btn-primary" x-show="$store.slit.canStream && !$store.camera.streaming"
                             :disabled="!$store.jobs.canControl || $store.camera.busy || !$store.wilds.guide_camera"
                             @click="$store.camera.start()"><i class="bi bi-play-fill me-1"></i>Start live capture</button>
-                    <button type="button" class="btn btn-sm btn-outline-primary" x-show="$store.slit.canOperate && $store.camera.streaming"
+                    <button type="button" class="btn btn-sm btn-outline-primary" x-show="$store.slit.canStream && $store.camera.streaming"
                             :disabled="!$store.jobs.canControl || $store.camera.busy"
                             @click="$store.camera.stop()"><i class="bi bi-stop-fill me-1"></i>Stop live capture</button>
                     <a class="btn btn-sm btn-outline-secondary" target="_blank" rel="noopener"
