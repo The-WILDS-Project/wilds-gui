@@ -109,13 +109,19 @@ document.addEventListener("alpine:init", () => {
         busy: false,
         applying: false,
         wasRunning: null,
+        calVersion: null,    // the version of the calibration shown in the "now" column
 
         async init() {
             // the dock draws the detected slit on the frame it was found in (slit.js)
             this.$watch("result", (r) => { Alpine.store("slit").detected = r; });
             await Promise.all([this.loadCal(), this.loadLast()]);
             this.$watch("$store.wilds.jobs", () => this.jobsChanged());
-            this.$watch("$store.wilds.conf_versions", () => this.loadCal());
+            // $watch calls back on every status tick, not only when the version moves: read the
+            // calibration again only when its version has.
+            this.$watch("$store.wilds.conf_versions", () => {
+                const v = wilds().conf_versions?.["guide-camera/cal"];
+                if (v !== undefined && v !== this.calVersion) this.loadCal();
+            });
         },
 
         // -- the job in progress -------------------------------------------------------------
@@ -175,7 +181,11 @@ document.addEventListener("alpine:init", () => {
         async loadCal() {
             try {
                 const response = await fetch(`${base}/config/guide-camera/cal`);
-                if (response.ok) this.cal = (await response.json()).values;
+                if (response.ok) {
+                    const view = await response.json();
+                    this.cal = view.values;
+                    this.calVersion = view.version;
+                }
             } catch { /* the "now" column stays empty */ }
         },
         async loadLast() {

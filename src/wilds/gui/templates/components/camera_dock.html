@@ -85,13 +85,13 @@ the dock as a thumbnail. Logic and the video socket: static/wilds/js/camera.js.
                         <rect class="slit-now" :x="$store.slit.v.now?.x" :y="$store.slit.v.now?.y" :width="$store.slit.v.now?.w" :height="$store.slit.v.now?.h"
                               :transform="$store.slit.v.now?.t"></rect>
                         {# The fixed jaw's side of the gap, drawn apart from the rest of the rectangle: only the other jaw moves. #}
-                        <line class="slit-fixed" :x1="$store.slit.v.now?.edge" :y1="$store.slit.v.now?.y" :x2="$store.slit.v.now?.edge" :y2="$store.slit.v.now?.y + $store.slit.v.now?.h"
+                        <line class="slit-fixed" :x1="$store.slit.v.now?.edge" :y1="$store.slit.v.now?.y" :x2="$store.slit.v.now?.edge" :y2="$store.slit.v.now?.y2"
                               :transform="$store.slit.v.now?.t"><title>Fixed jaw</title></line>
                     </g>
                     <g x-show="$store.slit.v.hasPending">
                         <rect class="slit-pending" :x="$store.slit.v.pending?.x" :y="$store.slit.v.pending?.y" :width="$store.slit.v.pending?.w" :height="$store.slit.v.pending?.h"
                               :transform="$store.slit.v.pending?.t" :stroke-dasharray="$store.slit.v.stroke * 4"></rect>
-                        <line class="slit-fixed slit-fixed-pending" :x1="$store.slit.v.pending?.edge" :y1="$store.slit.v.pending?.y" :x2="$store.slit.v.pending?.edge" :y2="$store.slit.v.pending?.y + $store.slit.v.pending?.h"
+                        <line class="slit-fixed slit-fixed-pending" :x1="$store.slit.v.pending?.edge" :y1="$store.slit.v.pending?.y" :x2="$store.slit.v.pending?.edge" :y2="$store.slit.v.pending?.y2"
                               :transform="$store.slit.v.pending?.t"></line>
                     </g>
                     <line class="slit-centre" :x1="$store.slit.v.cx - $store.slit.v.tick" :y1="$store.slit.v.cy" :x2="$store.slit.v.cx + $store.slit.v.tick" :y2="$store.slit.v.cy"></line>

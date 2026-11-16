@@ -455,10 +455,10 @@ def test_every_page_header_shows_wilds_opstate(client: Client, url: str) -> None
 
 def test_the_to_page_offers_startup_and_shutdown_by_opstate(client: Client) -> None:
     to = client.get("/to/").content.decode()
-    assert '@click="startup()"' in to and '@click="shutdown()"' in to
+    assert '@click="toggleWilds()"' in to  # one button, see the test of the WILDS panel below
     text = Path(finders.find("wilds/js/to.js")).read_text()
-    # start up unless started up already, shut down unless shut down already
-    assert 'this.opstate === "startedup"' in text and 'this.opstate === "shutdown"' in text
+    # shut down when started up, start up in any other state
+    assert 'this.opstate === "startedup"' in text and "this.startup()" in text
     assert "/system/startup" in text and "/system/shutdown" in text
 
 
@@ -829,3 +829,45 @@ def test_the_io_slit_panel_is_scaled_to_the_stages_range_between_its_hard_stops(
     assert "open_um" not in stage and "s.max_um" not in stage
     page = client.get("/io/operations/").content.decode()
     assert "percent of its range" in page and "narrowest (" in page and "widest (" in page
+
+
+def test_a_tooltip_that_is_open_is_not_touched_unless_its_text_changed(client: Client) -> None:
+    script = Path(finders.find("wilds/js/ui.js")).read_text()
+    directive = script[script.index('Alpine.directive("tooltip"') :].split("});\n});")[0]
+    # the status stream re-evaluates every expression with each video frame; setContent re-shows
+    # an open tooltip, so an unchanged text must return before it
+    assert "if (text === last) return;" in directive
+    assert directive.index("if (text === last) return;") < directive.index("setContent(")
+
+
+def test_the_to_wilds_panel_has_one_button_for_the_action_that_applies(client: Client) -> None:
+    page = client.get("/to/").content.decode()
+    panel = page[page.index('class="bi bi-power me-2"></i>WILDS') : page.index("bi-person-check")]
+    assert panel.count("<button") == 1  # not a Start up and a Shut down side by side
+    assert "isStartedUp ? 'Shut down' : 'Start up'" in panel and "toggleWilds()" in panel
+    script = Path(finders.find("wilds/js/to.js")).read_text()
+    assert 'get isStartedUp() { return this.opstate === "startedup"; }' in script
+    assert "this.isStartedUp ? this.shutdown() : this.startup()" in script
+
+
+def test_engineering_holding_control_may_command_the_telescope_from_the_adjust_panels(
+    client: Client,
+) -> None:
+    script = Path(finders.find("wilds/js/acquisition.js")).read_text()
+    # wilds-control lets the engineering lease command the telescope, so the panels must not refuse it
+    assert "Engineering mode does not command the telescope" not in script
+    assert "s.engineering" not in script
+
+
+def test_a_pending_adjustment_survives_the_status_stream_after_a_job_has_finished(
+    client: Client,
+) -> None:
+    script = Path(finders.find("wilds/js/acquisition.js")).read_text()
+    # Alpine's $watch calls back on every change of anything its getter read (the status stream
+    # replaces the jobs about once a second), so "state is done" alone cleared the pending offset
+    # and angle again and again after the first job. The job handled is remembered instead.
+    assert "function whenDone(component, then)" in script and "id !== handled" in script
+    assert script.count("whenDone(this,") == 2  # the offsets and the rotation panels
+    assert '(state) => { if (state === "done")' not in script and "if (state === \"done\") {" not in script
+    optics = Path(finders.find("wilds/js/optics_calibration.js")).read_text()
+    assert "v !== this.calVersion" in optics  # the calibration is read again only when its version moves

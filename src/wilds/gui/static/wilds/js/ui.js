@@ -224,15 +224,22 @@ document.addEventListener("alpine:init", () => {
     Alpine.directive("tooltip", (el, { expression }, { evaluateLater, effect, cleanup }) => {
         const getText = evaluateLater(expression);
         let instance = null;
+        let last = null;  // the text the tooltip has now
         effect(() => {
             getText((value) => {
-                if (value && instance) {
-                    instance.setContent({ ".tooltip-inner": String(value) });  // no flicker while hovering
+                const text = value ? String(value) : "";
+                // The expression is re-evaluated whenever anything it reads changes (the status stream
+                // ticks with every video frame). Bootstrap's setContent re-shows a tooltip that is open,
+                // replaying its fade-in: it blinks. So nothing is done unless the text really changed.
+                if (text === last) return;
+                last = text;
+                if (text && instance) {
+                    instance.setContent({ ".tooltip-inner": text });
                     return;
                 }
                 instance?.dispose();
-                instance = value
-                    ? new bootstrap.Tooltip(el, { html: false, placement: "top", title: String(value) })
+                instance = text
+                    ? new bootstrap.Tooltip(el, { html: false, placement: "top", title: text })
                     : null;
             });
         });

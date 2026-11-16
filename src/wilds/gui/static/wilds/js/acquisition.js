@@ -133,7 +133,6 @@ document.addEventListener("alpine:init", () => {
         get whyNot() {
             const s = session();
             if (!s?.holder) return "Request control first: only the holder can command the telescope";
-            if (s.engineering) return "Engineering mode does not command the telescope";
             const action = wilds().action("slew");
             if (!action.ok) return action.why || "The telescope is not available";
             if (this.job) return "A telescope command is in progress";
@@ -189,9 +188,22 @@ document.addEventListener("alpine:init", () => {
     function commandWhyNot(action) {
         const s = session();
         if (!s?.holder) return "Request control first: only the holder can command the telescope";
-        if (s.engineering) return "Engineering mode does not command the telescope";
         const a = wilds().action(action);
         return a.ok ? "" : a.why || "The telescope is not available";
+    }
+
+    /**
+     * Run ``then`` once when the job a component follows has finished successfully. Alpine's
+     * ``$watch`` calls back whenever anything its getter read changes, not only when the value does,
+     * and the status stream replaces the jobs about once a second: a plain "if state is done" would
+     * clear whatever the operator is setting up again on every tick after the first job. So the job
+     * handled is remembered.
+     */
+    function whenDone(component, then) {
+        let handled = null;
+        component.$watch(() => (component.last?.state === "done" ? component.jobId : null), (id) => {
+            if (id && id !== handled) { handled = id; then(); }
+        });
     }
 
     /** Following one job at a time: ``jobId``, the job while it runs, and how it ended. */
@@ -306,7 +318,7 @@ document.addEventListener("alpine:init", () => {
 
         init() {
             // A finished rotation: the pending angle has become the real one.
-            this.$watch(() => this.last?.state, (state) => { if (state === "done") slit().pendingPa = null; });
+            whenDone(this, () => { slit().pendingPa = null; });
         },
         get current() { return slit().currentPa; },
         get currentText() { return this.current === null ? "no target yet" : `${this.current.toFixed(1)}°`; },
@@ -339,9 +351,7 @@ document.addEventListener("alpine:init", () => {
         init() {
             // A point picked on the live view: move the pointing by the offset from the slit to it.
             slit().pickHandler = (e, n) => { this.moveBy(e, n); };
-            this.$watch(() => this.last?.state, (state) => {
-                if (state === "done") { this.pending = null; slit().pickMark = null; }
-            });
+            whenDone(this, () => { this.pending = null; slit().pickMark = null; });
         },
         get limit() { return wilds().telescope?.max_offset_arcsec ?? 120; },
         get current() {

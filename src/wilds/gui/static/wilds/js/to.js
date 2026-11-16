@@ -31,20 +31,18 @@ document.addEventListener("alpine:init", () => {
 
         get unlocked() { return this.passphrase !== ""; },
 
-        // -- start-up and shutdown of WILDS (plan §3.16): offered whenever they would change
-        // something, and not while one is running.
+        // -- start-up and shutdown of WILDS (plan §3.16): one button, the one that applies. WILDS that
+        // is started up offers "Shut down"; in any other state (shut down, initialized, a start-up
+        // that did not finish) it offers "Start up". Neither is offered while one is running.
         get wilds() { return Alpine.store("wilds"); },
         get opstate() { return this.wilds.system?.opstate ?? null; },
-        get whyNotStartup() {
+        get isStartedUp() { return this.opstate === "startedup"; },
+        get whyNotAction() {
             if (this.opstate === null) return "WILDS state not known yet";
             if (this.wilds.busyWith) return `WILDS is ${this.wilds.busyWith}`;
-            return this.opstate === "startedup" ? "WILDS is started up already" : "";
+            return "";
         },
-        get whyNotShutdown() {
-            if (this.opstate === null) return "WILDS state not known yet";
-            if (this.wilds.busyWith) return `WILDS is ${this.wilds.busyWith}`;
-            return this.opstate === "shutdown" ? "WILDS is shut down already" : "";
-        },
+        toggleWilds() { return this.isStartedUp ? this.shutdown() : this.startup(); },
         async startup() { await this.act("/system/startup", {}, "Start-up begun"); },
         async shutdown() {
             const ok = await uiConfirm("Shut WILDS down? Components stop what they are doing and the cooler is switched off.", {

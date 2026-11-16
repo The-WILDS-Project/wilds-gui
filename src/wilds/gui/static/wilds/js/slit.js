@@ -21,7 +21,7 @@ document.addEventListener("alpine:init", () => {
     const base = document.body.dataset.controlUrl;
     const rad = (d) => (d * Math.PI) / 180;
     const WORKING_WIDTH_ARCSEC = 1.0;  // the slit's working gap, when the calibration does not say
-    const EMPTY = { ok: false, vb: "0 0 1 1", w: 0, h: 0, cx: 0, cy: 0 };
+    const EMPTY = { ok: false, vb: "0 0 1 1", w: 0, h: 0, cx: 0, cy: 0, tick: 0 };
 
     Alpine.store("slit", {
         active: false,        // the Acquisition tab is shown
@@ -169,7 +169,7 @@ document.addEventListener("alpine:init", () => {
             // out to the stage's width, on the side the gap grows to.
             const edge = g.cx - (g.side * g.work) / 2;
             // ``edge`` is also where the fixed jaw is: the dock marks that side of the rectangle apart.
-            const slit = (pa) => ({ x: g.side > 0 ? edge : edge - g.wid, y: g.cy - g.len / 2, w: g.wid, h: g.len, edge, t: `rotate(${(this.angle(pa) - this.zeroError).toFixed(2)} ${g.cx} ${g.cy})` });
+            const slit = (pa) => ({ x: g.side > 0 ? edge : edge - g.wid, y: g.cy - g.len / 2, w: g.wid, h: g.len, edge, y2: g.cy + g.len / 2, t: `rotate(${(this.angle(pa) - this.zeroError).toFixed(2)} ${g.cx} ${g.cy})` });
             const d = this.dir(this.shownPa);
             const reach = g.len / 2 + Math.max(14, g.w * 0.02) / z;
             const arm = (Math.min(g.w, g.h) * 0.07) / z;
