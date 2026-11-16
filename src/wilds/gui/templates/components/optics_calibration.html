@@ -1,8 +1,9 @@
 {% comment %}
 Calibrating the guide camera and the slit from the sky (plan §3.3, static/wilds/js/optics_calibration.js):
 with the telescope on a star field, close the slit and plate solve a frame (plate scale, which way north
-lies, parity), open the slit to a measuring width and find the gap in the difference of a second frame
-(where the slit is, which way it points, its size). The result is shown against the calibration in use
+lies, parity), open the slit to a measuring width and to half of it and find the gap in the difference of each frame
+(where the slit is, which way it points, its size; only one jaw moves, so the two also give the fixed
+jaw's edge and the side the gap grows to). The result is shown against the calibration in use
 and is applied only by the button. The two frames appear in the guide-camera dock.
 {% endcomment %}
 <div x-data="opticsCalibration()">
@@ -35,7 +36,7 @@ and is applied only by the button. The two frames appear in the guide-camera doc
         </div>
         <div>
             <label class="form-label small mb-1" for="oc-width">Measuring gap
-                {% include "components/info.html" with tip="'The slit is opened to this width for the second frame: a strip that is narrower than the slit is long, wide enough to find easily. Fully open is wider than the slit is long.'" %}</label>
+                {% include "components/info.html" with tip="'The slit is opened to this width for the second frame, and to half of it for a third: a strip that is narrower than the slit is long, wide enough to find easily. Fully open is wider than the slit is long. Only one jaw moves, so the two gaps also tell where the fixed jaw is and which way the gap grows.'" %}</label>
             <div class="input-group input-group-sm" style="width: 9rem;">
                 <input id="oc-width" type="number" class="form-control" min="0" step="any" x-model.number="width">
                 <span class="input-group-text">arcsec</span>

@@ -777,3 +777,13 @@ def test_the_light_pill_says_whether_wilds_gets_light_from_the_cube(client: Clie
     view = status[status.index("get lightView()") : status.index("get tcsText()")]
     assert '"yes"' in view and "ui-success" in view and '"no"' in view and "ui-danger" in view
     assert "tip:" in view  # the reason, as a tooltip
+
+
+def test_the_slit_overlay_draws_a_gap_that_grows_from_the_fixed_jaw(client: Client) -> None:
+    script = Path(finders.find("wilds/js/slit.js")).read_text()
+    assert "slit_side" in script and "WORKING_WIDTH_ARCSEC" in script  # one jaw moves
+    assert "d.gap_x" in script  # the calibration's gap is drawn about its own middle
+    page = client.get("/eng/calibration/").content.decode()
+    assert "only one jaw moves" in page.lower()
+    optics = Path(finders.find("wilds/js/optics_calibration.js")).read_text()
+    assert "Fixed jaw edge x" in optics and "Gap grows to" in optics

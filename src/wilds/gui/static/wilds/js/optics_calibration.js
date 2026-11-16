@@ -4,8 +4,10 @@
  *
  * "Start" is a job on wilds-control (POST /calibration/optics): with the telescope on a star field
  * it closes the slit, takes a frame and plate solves it (plate scale, which way north lies, parity),
- * opens the slit to a measuring width, takes a second frame, and finds the gap in the difference
- * (where the slit is, which way it points, its length and width). The result is a measurement only:
+ * opens the slit to a measuring width and to half of it, takes a frame at each, and finds the gap in
+ * the differences (where the slit is, which way it points, its length and width). Only one jaw of
+ * the slit moves, so the two gaps also give the fixed jaw's edge and the side the gap grows to.
+ * The result is a measurement only:
  * it is shown next to the calibration now in use, with whatever looks wrong, and "Apply" writes it
  * into the calibration (POST /calibration/optics/apply) with who and when. The two frames appear in
  * the guide-camera dock as they are taken. The stage card moves the slit to its presets or a width
@@ -42,6 +44,8 @@ document.addEventListener("alpine:init", () => {
         return data;
     }
 
+    /** Which way the gap grows from the slit's fixed jaw (the calibration's slit_side). */
+    const sideText = (v) => (v === 1 ? "right of the long axis" : v === -1 ? "left of the long axis" : "—");
     const num = (v, digits) => (v === null || v === undefined || Number.isNaN(v) ? "—" : Number(v).toFixed(digits));
 
     // -- the slit stage by hand ------------------------------------------------------------------
@@ -186,8 +190,9 @@ document.addEventListener("alpine:init", () => {
                 row("Plate scale", "arcsec/px", m.plate_scale_arcsec_px, c.plate_scale_arcsec_px, 5),
                 row("Orientation (north at PA 0)", "°", m.orientation_deg, c.orientation_deg, 2),
                 { label: "Parity", unit: "", measured: String(m.parity), now: c.parity === null || c.parity === undefined ? "—" : String(c.parity) },
-                row("Slit centre x", "px", m.slit_x, c.slit_pixel_x, 1),
-                row("Slit centre y", "px", m.slit_y, c.slit_pixel_y, 1),
+                row("Fixed jaw edge x", "px", m.slit_x, c.slit_pixel_x, 1),
+                row("Fixed jaw edge y", "px", m.slit_y, c.slit_pixel_y, 1),
+                { label: "Gap grows to", unit: "", measured: sideText(m.slit_side), now: sideText(c.slit_side) },
                 row("Slit angle", "°", m.slit_angle_deg, c.slit_angle_deg ?? c.orientation_deg, 2),
                 row("Slit length", "arcsec", m.slit_length_arcsec, c.slit_length_arcsec, 2),
             ];
