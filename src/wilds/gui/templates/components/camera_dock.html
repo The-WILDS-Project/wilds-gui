@@ -1,7 +1,7 @@
 {% load static %}
 {% comment %}
 The guide-camera dock (plan §3.8): the live view to the right of the page, on the Instrument
-Operator and Engineering pages. Three sizes: dock (the working size, with the controls),
+Operator, Engineering and Telescope Operator pages. Three sizes: dock (the working size, with the controls),
 thumb (a small picture to keep an eye on while working in a panel) and off (a rail with a
 button; the video socket is closed). The choice is remembered per browser; a narrow window shows
 the dock as a thumbnail. Logic and the video socket: static/wilds/js/camera.js.
@@ -30,6 +30,15 @@ the dock as a thumbnail. Logic and the video socket: static/wilds/js/camera.js.
             <strong>Guide camera</strong>
             <span class="dock-state text-body-secondary small" x-text="$store.camera.headline"></span>
             <span class="ms-auto d-flex gap-1">
+                {# Start / stop the live video: the Instrument Operator holding control only (static/wilds/js/slit.js canOperate), at any size. #}
+                <button type="button" class="btn btn-sm" :class="$store.camera.streaming ? 'btn-primary' : 'btn-outline-primary'"
+                        x-show="$store.slit.canOperate && !$store.camera.view"
+                        :disabled="!$store.jobs.canControl || $store.camera.busy || (!$store.camera.streaming && !$store.wilds.guide_camera)"
+                        @click="$store.camera.streaming ? $store.camera.stop() : $store.camera.start()"
+                        x-tooltip="$store.camera.streaming ? 'Stop the live video' : 'Start the live video'"
+                        :aria-label="$store.camera.streaming ? 'Stop the live video' : 'Start the live video'">
+                    <i class="bi" :class="$store.camera.streaming ? 'bi-stop-fill' : 'bi-play-fill'"></i>
+                </button>
                 <button type="button" class="btn btn-sm btn-outline-secondary" :class="{ active: $store.camera.size === 'thumb' }"
                         @click="$store.camera.setSize('thumb')" x-tooltip="'Small picture'" aria-label="Small picture">
                     <i class="bi bi-dash-square"></i>

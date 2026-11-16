@@ -404,10 +404,6 @@ def test_operator_and_engineering_pages_have_the_camera_dock(client: Client, url
     assert html.index('id="sidebar"') < html.index('class="camera-dock"')  # sidebar, main, dock
 
 
-def test_the_to_page_has_no_camera_dock(client: Client) -> None:
-    assert "camera-dock" not in client.get("/to/").content.decode()
-
-
 def test_engineering_pages_use_the_app_tooltips_not_native_titles(client: Client) -> None:
     for url in ("/eng/", "/eng/calibration/", "/eng/configuration/"):
         html = client.get(url).content.decode()
@@ -721,7 +717,7 @@ def test_the_acquisition_tab_adjusts_offsets_and_rotation_with_the_slit_overlay(
 
 def test_the_to_page_shows_the_tcs_but_has_nothing_to_approve(client: Client) -> None:
     page = client.get("/to/").content.decode()
-    assert "tcsView" in page and "answerPending" not in page and "pending" not in page
+    assert "tcsView" in page and "answerPending" not in page and "Approve" not in page
     script = Path(finders.find("wilds/js/to.js")).read_text()
     assert "/dev/telescope/" not in script and "answerPending" not in script
 
@@ -787,3 +783,20 @@ def test_the_slit_overlay_draws_a_gap_that_grows_from_the_fixed_jaw(client: Clie
     assert "only one jaw moves" in page.lower()
     optics = Path(finders.find("wilds/js/optics_calibration.js")).read_text()
     assert "Fixed jaw edge x" in optics and "Gap grows to" in optics
+
+
+def test_the_to_page_has_the_same_dock_and_its_activity_panel_at_the_bottom(client: Client) -> None:
+    html = client.get("/to/").content.decode()
+    assert 'class="camera-dock"' in html and "wilds/js/camera.js" in html  # the same dock
+    assert html.count("activity_board") <= 1 and 'class="ui-bottom"' in html
+    # the activity panel is below the main area (after the dock), not a column beside the controls
+    assert html.index('class="camera-dock"') < html.index('class="ui-bottom"')
+    assert html.index("Instrument activity") > html.index('class="camera-dock"')
+
+
+def test_the_dock_has_a_start_stop_button_for_the_operator_holding_control(client: Client) -> None:
+    dock = client.get("/io/operations/").content.decode()
+    head = dock[dock.index('class="dock-head"') : dock.index('class="dock-viewbar')]
+    assert "$store.slit.canOperate" in head  # not the TO, not engineering, not a viewer
+    assert "$store.camera.start()" in head and "$store.camera.stop()" in head
+    assert "bi-stop-fill" in head and "bi-play-fill" in head

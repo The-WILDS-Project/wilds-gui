@@ -9,11 +9,20 @@
 {% block session_badge %}{% endblock %}
 {% block session_js %}{% endblock %}
 {% block to_status %}{% endblock %}
+{% block dock %}{% include "components/camera_dock.html" %}{% endblock %}
 {% block extra_js %}<script src="{% static 'wilds/js/to.js' %}?v={{ asset_version }}" defer></script>{% endblock %}
+{% block bottom %}
+<div class="ui-bottom">
+    <div class="card">
+        <div class="card-header"><i class="bi bi-activity me-2"></i>Instrument activity</div>
+        <div class="card-body">{% include "components/activity_board.html" %}</div>
+    </div>
+</div>
+{% endblock %}
 {% block content %}
 {# Single page, no sidebar (plan §3.11). Placeholders until wilds-control serves sessions. #}
 <div class="row g-3" x-data="toSessions()" x-init="start()">
-    <div class="col-lg-6">
+    <div class="col-xl-8">
         <div class="card mb-3" x-show="unlocked">
             <div class="card-header"><i class="bi bi-power me-2"></i>WILDS</div>
             <div class="card-body d-flex flex-wrap align-items-center gap-2">
@@ -76,14 +85,6 @@
                         </div>
                     </template>
                 </div>
-            </div>
-        </div>
-    </div>
-    <div class="col-lg-6">
-        <div class="card">
-            <div class="card-header"><i class="bi bi-activity me-2"></i>Instrument activity</div>
-            <div class="card-body">
-                {% include "components/activity_board.html" %}
             </div>
         </div>
     </div>
