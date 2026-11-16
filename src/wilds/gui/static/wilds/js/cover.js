@@ -4,7 +4,9 @@
  * WILDS, which the guide camera's darks need. Whoever holds control may move it (POST
  * /cover/close, /cover/open), but LDT asks that the Telescope Operator knows first, so a dialog
  * reminds them and nothing is sent until they confirm. The state (open, closed, opening, closing,
- * unknown) comes in the status stream. All text goes in with x-text.
+ * unknown) comes in the status stream, as the instrument cube reports it (about once a second,
+ * with the fold mirror that feeds WILDS); without its reports the state follows the commands.
+ * All text goes in with x-text.
  */
 document.addEventListener("alpine:init", () => {
     const base = document.body.dataset.controlUrl;
@@ -34,9 +36,31 @@ document.addEventListener("alpine:init", () => {
         get note() {
             const c = this.cover;
             if (!c) return "";
-            if (this.moving) return `The cover is ${this.state}; it is assumed to take ${c.travel_s} s`;
-            if (this.state === "unknown") return "Nobody has moved the cover since wilds-control started, and nothing senses it";
+            if (this.moving) {
+                return c.sensed
+                    ? `The cover is ${this.state}; waiting for the instrument cube to report it (up to ${c.travel_s} s)`
+                    : `The cover is ${this.state}; it is assumed to take ${c.travel_s} s`;
+            }
+            if (this.state === "unknown") return "The instrument cube has not reported the cover, and nobody has moved it since wilds-control started";
             return "";
+        },
+        /** Where the state comes from: the instrument cube's reports, or only the commands sent. */
+        get sensorText() {
+            const c = this.cover;
+            if (!c) return "";
+            if (!c.sensed) return "The instrument cube is not reporting: the state follows the commands sent";
+            const mm = c.cube?.cover_position_mm;
+            return `Reported by the instrument cube${mm == null ? "" : `, cover at ${mm} mm`}`;
+        },
+        /** The fold mirror that feeds WILDS: {text, ok} (ok false: the light is going elsewhere). */
+        get lightPath() {
+            const cube = this.cover?.cube;
+            if (!cube || cube.to_wilds == null) return null;
+            const where = `Fold mirror ${cube.fold_mirror} is ${String(cube.fold_mirror_state).toLowerCase()}`
+                + (cube.fold_mirror_position_mm == null ? "" : ` (${cube.fold_mirror_position_mm} mm)`);
+            return cube.to_wilds
+                ? { ok: true, text: `${where}: the light is sent to WILDS` }
+                : { ok: false, text: `${where}: the light is not sent to WILDS` };
         },
 
         async move(action) {

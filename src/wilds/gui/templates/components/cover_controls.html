@@ -18,4 +18,8 @@ holds control may move it; a dialog first reminds them to tell the Telescope Ope
         </span>
         <span class="small text-body-secondary" x-show="note" x-text="note"></span>
     </div>
+    <div class="small text-body-secondary mt-2" x-show="sensorText" x-text="sensorText"></div>
+    <div class="small mt-1" x-show="lightPath" :class="lightPath?.ok ? 'text-body-secondary' : 'text-warning-emphasis'">
+        <i class="bi me-1" :class="lightPath?.ok ? 'bi-check-circle' : 'bi-exclamation-triangle'"></i><span x-text="lightPath?.text"></span>
+    </div>
 </div>

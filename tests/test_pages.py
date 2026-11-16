@@ -525,8 +525,10 @@ def test_every_page_shows_the_cover_pill_and_the_calibration_card_moves_the_cove
     client: Client,
 ) -> None:
     for url in ("/eng/calibration/", "/to/"):
-        assert "coverView" in client.get(url).content.decode(), url
-        assert "lightView" not in client.get(url).content.decode(), url
+        page = client.get(url).content.decode()
+        assert "lightView" in page, url  # the header's Light pill says what the cover does
+        assert "Light cover:" not in page, url  # and the old Light cover pill is gone from it
+    assert "coverView" in client.get("/eng/calibration/").content.decode()  # the Cover tab's pill
     card = client.get("/eng/calibration/").content.decode()
     assert "move('close')" in card and "move('open')" in card
     assert "Close the cover" in card and "Open the cover" in card
@@ -654,7 +656,7 @@ def test_each_entry_has_a_discard_button_that_asks_first(client: Client) -> None
 
 def test_every_header_indicator_is_the_same_pill(client: Client) -> None:
     html = client.get("/eng/").content.decode()
-    for label in ("Control", "TO", "TCS", "Mode", "WILDS", "Cover"):
+    for label in ("Control", "TO", "TCS", "Mode", "WILDS", "Light"):
         assert f'<span class="pill-label">{label}:</span>' in html, label
     assert 'class="badge ui-pill' in html and 'pill-label">Server:' in html
     css = Path(finders.find("wilds/css/tokens.css")).read_text()
@@ -755,3 +757,23 @@ def test_explanations_are_an_info_icon_with_the_tooltip_on_it(client: Client) ->
     # the guide-camera dock's labels: the icon is inside the label, the tooltip is on the icon
     assert 'class="bi bi-info-circle ui-info-icon"' in dock
     assert "x-tooltip=\"'Exposure: 0.001 to 60 s'\"" in dock and "style=\"cursor: help;\"" not in dock
+
+
+def test_the_cover_shows_where_its_state_comes_from_and_whether_the_light_reaches_wilds(
+    client: Client,
+) -> None:
+    card = client.get("/eng/calibration/").content.decode()
+    assert "sensorText" in card and "lightPath" in card
+    script = Path(finders.find("wilds/js/cover.js")).read_text()
+    assert "c.sensed" in script and "to_wilds" in script
+    status = Path(finders.find("wilds/js/status.js")).read_text()
+    assert "get lightView" in status and "to_wilds === false" in status
+
+
+def test_the_light_pill_says_whether_wilds_gets_light_from_the_cube(client: Client) -> None:
+    html = client.get("/eng/").content.decode()
+    assert "$store.wilds.lightView" in html
+    status = Path(finders.find("wilds/js/status.js")).read_text()
+    view = status[status.index("get lightView()") : status.index("get tcsText()")]
+    assert '"yes"' in view and "ui-success" in view and '"no"' in view and "ui-danger" in view
+    assert "tip:" in view  # the reason, as a tooltip
