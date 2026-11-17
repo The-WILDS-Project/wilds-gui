@@ -32,9 +32,7 @@
         <div class="card mb-3"><div class="card-body py-2">{% include "components/cover_controls.html" %}</div></div>
     </div>
     <div x-show="tab === 'adc'">
-        <div class="d-flex flex-wrap gap-2">
-            {% include "components/action_button.html" with action="cal_adc" label="ADC" style="outline-primary" %}
-        </div>
+        {% include "components/adc_calibration.html" %}
     </div>
     <div x-show="tab === 'focus'">
         <div class="d-flex flex-wrap gap-2">

@@ -13,6 +13,7 @@ document.addEventListener("alpine:init", () => {
         jobs: [],                    // active jobs, then the last few finished (plan §3.14)
         guide_camera: null,          // {kind, streaming, exposing, settings, cooler, last_frame_id}; null until known
         system: null,                // WILDS as a whole: {opstate, operational, why_not_operational, components}; null until known
+        adc: null,                   // the atmospheric dispersion corrector (optional): {installed, pair1_deg, pair2_deg, tracking, tracking_state, target, ...}; null until known
         slit: null,                  // {position_um, width_arcsec, preset, moving, min_um, max_um, closed_um, open_um, um_per_arcsec, lifecycle}; null until known
         telescope: null,             // {kind, lifecycle, telemetry: {target, rot_pa, offsets, in_position, accepts_commands, ...}}; null until known
         cover: null,                 // the instrument cover: {state: open|closed|opening|closing|unknown, since_ms, travel_s, sensed, cube: {to_wilds, ...}, ...}; null until known

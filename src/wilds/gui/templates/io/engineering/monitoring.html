@@ -4,3 +4,18 @@
         {% include "components/activity_board.html" %}
     </div>
 </div>
+
+{% comment %} The technical detail of the ADC (static/wilds/js/adc.js); the operator's view is Operations → ADC. {% endcomment %}
+<div class="card mt-3" x-data="adcMonitor()">
+    <div class="card-header"><i class="bi bi-rainbow me-2"></i>ADC</div>
+    <div class="card-body">
+        <p class="text-body-secondary small mb-2" x-show="!known">No ADC status yet.</p>
+        <table class="table table-sm small align-middle mb-0" x-show="known">
+            <tbody>
+                <template x-for="r in rows" :key="r[0]">
+                    <tr><th scope="row" class="fw-normal text-body-secondary" style="width: 11rem;" x-text="r[0]"></th><td x-text="r[1]"></td></tr>
+                </template>
+            </tbody>
+        </table>
+    </div>
+</div>

@@ -1,0 +1,72 @@
+{% comment %}
+The atmospheric dispersion corrector, for the Instrument Operator (Operations → ADC;
+static/wilds/js/adc.js, plan §3.4): where the two prism pairs are, what they make against what the
+atmosphere needs, the tracking switch, and setting the pairs by hand (which tracking refuses). The
+stages' own readings and the model's inputs are on Engineering → Monitoring.
+{% endcomment %}
+<div class="card mb-3" x-data="adcPanel()">
+    <div class="card-header"><i class="bi bi-rainbow me-2"></i>Atmospheric dispersion corrector
+        <span class="badge ui-secondary ms-2" x-show="!installed">not installed</span></div>
+    <div class="card-body">
+        <div class="alert alert-secondary py-2" role="status" x-show="!installed">
+            <i class="bi bi-info-circle me-2"></i>The ADC is not installed, so its controls are greyed out. It is a
+            removable module and WILDS works without it; switch it on under Engineering → Configuration → adc when it is fitted.
+        </div>
+        <p class="small text-body-secondary mb-2">
+            Two pairs of prisms cancel the atmosphere's dispersion: how much follows the target's zenith
+            distance, which way follows the parallactic angle seen from the slit. Tracking keeps them there
+            while the telescope moves; set them by hand only with tracking off.
+        </p>
+        <div class="row mb-2 align-items-center">
+            <div class="col-3 fw-bold text-end">Tracking</div>
+            <div class="col-9 d-flex flex-wrap align-items-center gap-3">
+                <span :class="whyNotCommand ? 'ui-unavailable' : ''" x-tooltip="whyNotCommand">
+                    <span class="form-check form-switch m-0">
+                        <input class="form-check-input" type="checkbox" role="switch" id="adc-tracking" aria-label="ADC tracking"
+                               :checked="tracking" :disabled="!!whyNotCommand" @change="setTracking($event.target.checked)">
+                        <label class="form-check-label" for="adc-tracking" x-text="tracking ? 'on' : 'off'"></label>
+                    </span>
+                </span>
+                <span class="small text-body-secondary" x-text="trackingText"></span>
+            </div>
+        </div>
+        <div class="row mb-2 align-items-center">
+            <div class="col-3 fw-bold text-end">Pairs now</div>
+            <div class="col-9"><code x-text="nowText"></code></div>
+        </div>
+        <div class="row mb-2 align-items-center">
+            <div class="col-3 fw-bold text-end">They make</div>
+            <div class="col-9"><code x-text="makingText"></code></div>
+        </div>
+        <div class="row mb-2 align-items-center" x-show="needsText">
+            <div class="col-3 fw-bold text-end">Atmosphere</div>
+            <div class="col-9">
+                <span x-text="needsText"></span>
+                <span class="badge ui-warning ms-2" x-show="saturated">more than the ADC can cancel</span>
+            </div>
+        </div>
+        <div class="row mb-2 align-items-center">
+            <div class="col-3 fw-bold text-end">Set by hand</div>
+            <div class="col-9 d-flex flex-wrap align-items-center gap-2">
+                <div class="input-group" style="width: 11rem;">
+                    <span class="input-group-text">pair 1</span>
+                    <input type="number" step="any" class="form-control" aria-label="Pair 1 in degrees"
+                           :value="shown1" :disabled="!!whyNotMove" @input="edit('pair1', $event.target.value)">
+                    <span class="input-group-text">°</span>
+                </div>
+                <div class="input-group" style="width: 11rem;">
+                    <span class="input-group-text">pair 2</span>
+                    <input type="number" step="any" class="form-control" aria-label="Pair 2 in degrees"
+                           :value="shown2" :disabled="!!whyNotMove" @input="edit('pair2', $event.target.value)">
+                    <span class="input-group-text">°</span>
+                </div>
+                <span :class="whyNotApply ? 'ui-unavailable' : ''" x-tooltip="whyNotApply">
+                    <button type="button" class="btn btn-primary" :disabled="!!whyNotApply || sending" @click="apply()">
+                        <i class="bi bi-check-lg me-1"></i>Apply</button></span>
+                <button type="button" class="btn btn-outline-secondary" :disabled="!editing || !installed" @click="reset()">Reset</button>
+            </div>
+        </div>
+        <div class="alert alert-danger py-2 mt-2 mb-0" role="alert" x-show="error">
+            <i class="bi bi-exclamation-octagon me-2"></i><span x-text="error"></span></div>
+    </div>
+</div>
