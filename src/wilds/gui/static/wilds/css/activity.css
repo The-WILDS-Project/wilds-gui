@@ -31,6 +31,8 @@
     transition: border-color 0.3s;
 }
 
+/* An optional component that is not installed (the ADC): there is nothing to watch. */
+.board-comp.absent { opacity: 0.45; border-style: dashed; }
 .board-comp.busy {
     border-color: var(--ui-primary-border);
 }

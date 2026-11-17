@@ -1,0 +1,61 @@
+{% comment %}
+Engineering → Calibration → ADC (static/wilds/js/adc.js, "adcCalibration"): each prism pair's
+reference to its stage. A stage's zero point is what it reads when its pair is at the reference
+position; the pair's angle everywhere else is the stage's reading minus it. Saved in the ADC's
+calibration values (/config/adc/cal), with who and why. Greyed out when the ADC is not installed.
+{% endcomment %}
+<div x-data="adcCalibration()">
+    <div class="alert alert-secondary py-2" role="status" x-show="!installed">
+        <i class="bi bi-info-circle me-2"></i>The ADC is not installed, so its calibration is greyed out
+        (Engineering → Configuration → adc → Installed).
+    </div>
+    <p class="text-body-secondary small">
+        The reference of each prism pair to its stage: what the stage reads when the pair is at its reference
+        position. The pair's angle is the stage's reading minus this zero point. Put the pair at its reference
+        (Operations → ADC, set by hand, with tracking off), then press <em>Use the current reading</em>, or type the value.
+    </p>
+    <div class="table-responsive">
+        <table class="table table-sm align-middle" style="max-width: 52rem;">
+            <thead>
+                <tr class="small text-body-secondary">
+                    <th scope="col">Pair</th><th scope="col" class="text-nowrap">Stage reads now</th><th scope="col" style="width: 13rem;">Reference to stage position</th>
+                    <th scope="col"></th><th scope="col" class="text-nowrap">Pair would be at</th>
+                </tr>
+            </thead>
+            <tbody>
+                <template x-for="n in [1, 2]" :key="n">
+                    <tr>
+                        <th scope="row" class="text-nowrap" x-text="'Pair ' + n"></th>
+                        <td><code x-text="stageText(n)"></code></td>
+                        <td>
+                            <div class="input-group input-group-sm">
+                                <input type="number" step="any" class="form-control" :aria-label="'Reference of pair ' + n + ' to its stage position, degrees'"
+                                       :value="shown(n)" :disabled="!!whyNotCommand" @input="edit(n, $event.target.value)">
+                                <span class="input-group-text">°</span>
+                            </div>
+                        </td>
+                        <td>
+                            <span :class="whyNotCommand || stage(n) === null ? 'ui-unavailable' : ''" x-tooltip="whyNotCommand || (stage(n) === null ? 'The stage is moving' : 'Take the stage\'s reading as this pair\'s reference')">
+                                <button type="button" class="btn btn-sm btn-outline-secondary text-nowrap" :disabled="!!whyNotCommand || stage(n) === null" @click="useReading(n)">
+                                    <i class="bi bi-crosshair me-1"></i>Use the current reading</button>
+                            </span>
+                        </td>
+                        <td><code x-text="previewText(n)"></code></td>
+                    </tr>
+                </template>
+            </tbody>
+        </table>
+    </div>
+    <div class="d-flex flex-wrap align-items-center gap-2 mb-2">
+        <input type="text" class="form-control form-control-sm" style="max-width: 18rem;" maxlength="120" x-model="reason"
+               placeholder="Why (optional)" aria-label="Reason for the change" :disabled="!!whyNotCommand">
+        <span :class="whyNotSave ? 'ui-unavailable' : ''" x-tooltip="whyNotSave">
+            <button type="button" class="btn btn-sm btn-primary" :disabled="!!whyNotSave || saving" @click="save()">
+                <i class="bi bi-check-lg me-1"></i>Save</button>
+        </span>
+        <button type="button" class="btn btn-sm btn-outline-secondary" :disabled="!changed && !reason" @click="reset()">Reset</button>
+        <span class="small text-body-secondary">Every change is a recorded version (Engineering → Configuration → adc → calibration).</span>
+    </div>
+    <div class="alert alert-danger py-2 mb-0" role="alert" x-show="error">
+        <i class="bi bi-exclamation-octagon me-2"></i><span x-text="error"></span></div>
+</div>

@@ -7,7 +7,9 @@
 {% block dock %}{% include "components/camera_dock.html" %}{% endblock %}
 {% block extra_js %}{% if engineering %}{% if page == "calibration" %}<script src="{% static 'wilds/js/guide_calibration.js' %}?v={{ asset_version }}" defer></script>
 <script src="{% static 'wilds/js/optics_calibration.js' %}?v={{ asset_version }}" defer></script>
-<script src="{% static 'wilds/js/cover.js' %}?v={{ asset_version }}" defer></script>{% elif page == "configuration" %}<script src="{% static 'wilds/js/config.js' %}?v={{ asset_version }}" defer></script>{% endif %}{% elif page == "operations" %}<script src="{% static 'wilds/js/acquisition.js' %}?v={{ asset_version }}" defer></script>{% endif %}{% endblock %}
+<script src="{% static 'wilds/js/cover.js' %}?v={{ asset_version }}" defer></script>
+<script src="{% static 'wilds/js/adc.js' %}?v={{ asset_version }}" defer></script>{% elif page == "configuration" %}<script src="{% static 'wilds/js/config.js' %}?v={{ asset_version }}" defer></script>{% elif page == "monitoring" %}<script src="{% static 'wilds/js/adc.js' %}?v={{ asset_version }}" defer></script>{% endif %}{% elif page == "operations" %}<script src="{% static 'wilds/js/acquisition.js' %}?v={{ asset_version }}" defer></script>
+<script src="{% static 'wilds/js/adc.js' %}?v={{ asset_version }}" defer></script>{% endif %}{% endblock %}
 {% block bottom %}
 {% comment %} The Activity board is on every page but Engineering → Monitoring, which is that board in full. {% endcomment %}
 {% if not engineering or page != "monitoring" %}
@@ -65,7 +67,7 @@
                },
                tab: (() => { try { return localStorage.getItem('wilds-ops-tab') || 'acquisition'; } catch { return 'acquisition'; } })(),
                get tabs() {
-                   const t = [['acquisition', 'Acquisition'], ['focus', 'Focus'], ['guiding', 'Guiding']];
+                   const t = [['acquisition', 'Acquisition'], ['adc', 'ADC'], ['focus', 'Focus'], ['guiding', 'Guiding']];
                    if ($store.wilds.opmode === 'development') t.push(['test', 'Test']);
                    return t;
                },
@@ -74,7 +76,7 @@
     <ul class="nav nav-tabs mb-3" role="tablist">
         <template x-for="t in tabs" :key="t[0]">
             <li class="nav-item" role="presentation">
-                <button type="button" class="nav-link" role="tab" :class="t[0] === shown ? 'active' : ''" :aria-selected="t[0] === shown"
+                <button type="button" class="nav-link" role="tab" :class="[t[0] === shown ? 'active' : '', t[0] === 'adc' && $store.wilds.adc?.installed === false ? 'text-body-tertiary' : '']" :aria-selected="t[0] === shown"
                         @click="pick(t[0])" style="white-space: nowrap;" x-text="t[1]"></button>
             </li>
         </template>
@@ -338,6 +340,10 @@
                 </div>
             </div>
         </div>
+    </div>
+
+    <div x-show="shown === 'adc'">
+        {% include "components/adc_panel.html" %}
     </div>
 
     <div x-show="shown === 'focus'">

@@ -365,7 +365,6 @@ def test_eng_pages_have_their_own_content(client: Client) -> None:
     assert "Archon VIS" in mon and "cal_lamps" not in mon and "cfg_slit" not in mon
     for action in (
         "lamps",
-        "adc",
         "focus",
         "bias",
         "dark",
@@ -934,3 +933,103 @@ def test_the_sidebar_submenu_listeners_come_before_it_is_opened(client: Client) 
     side = script[script.index('.querySelectorAll(".sidebar-submenu")') :]
     # opening the submenu of the page shown must turn its arrow: the listeners are attached first
     assert side.index('addEventListener("show.bs.collapse"') < side.index(".show();")
+
+
+def test_the_operations_page_has_an_adc_tab_with_the_angles_and_the_tracking_switch(
+    client: Client,
+) -> None:
+    html = client.get("/io/operations/").content.decode()
+    assert "['adc', 'ADC']" in html and "shown === 'adc'" in html
+    assert 'x-data="adcPanel()"' in html and "wilds/js/adc.js" in html
+    for word in ("Pairs now", "They make", "Tracking", "Set by hand", 'aria-label="ADC tracking"'):
+        assert word in html, word
+    assert "setTracking($event.target.checked)" in html and "apply()" in html
+    assert "adcMonitor" not in html  # the stage details are not the operator's tab
+
+
+def test_the_stage_details_of_the_adc_are_on_engineering_monitoring(client: Client) -> None:
+    html = client.get("/io/engineering/monitoring/").content.decode()
+    assert 'x-data="adcMonitor()"' in html and "wilds/js/adc.js" in html
+    assert "adcPanel" not in html
+    script = Path(finders.find("wilds/js/adc.js")).read_text()
+    for detail in (
+        "Stage 1 reads",
+        "Stage 2 reads",
+        "zero point",
+        "Weather used",
+        "Atmosphere",
+        "Last look",
+    ):
+        assert detail in script, detail
+    # Configuration does not load it; Calibration does, for the stage references
+    assert "wilds/js/adc.js" not in client.get("/io/engineering/configuration/").content.decode()
+    assert "adcMonitor" not in client.get("/io/engineering/calibration/").content.decode()
+
+
+def test_the_adc_panel_refuses_a_hand_move_while_tracking_and_without_control(
+    client: Client,
+) -> None:
+    script = Path(finders.find("wilds/js/adc.js")).read_text()
+    assert "Only the session holding control can command the ADC" in script
+    assert "Tracking is on: switch it off to set the pairs by hand" in script
+    assert "/adc/tracking" in script and "/adc/move" in script
+    status = Path(finders.find("wilds/js/status.js")).read_text()
+    assert "adc: null" in status
+
+
+def test_the_adc_views_share_getters_by_descriptor_not_by_object_spread(client: Client) -> None:
+    script = Path(finders.find("wilds/js/adc.js")).read_text()
+    # `{...common}` would run the getters once and freeze their values: the panel stayed "unknown"
+    assert "...common" not in script and "getOwnPropertyDescriptors(common)" in script
+
+
+def test_the_adc_is_optional_and_everything_that_relies_on_it_observes_the_installed_toggle(
+    client: Client,
+) -> None:
+    adc = Path(finders.find("wilds/js/adc.js")).read_text()
+    assert "get installed() { return this.adc?.installed !== false; }" in adc
+    assert (
+        'if (!this.installed) return "The ADC is not installed"' in adc
+    )  # every command greyed, with the reason
+    assert "not in the instrument" in adc  # the Monitoring card says so
+    panel = client.get("/io/operations/").content.decode()
+    assert 'x-show="!installed"' in panel and "Engineering → Configuration → adc" in panel
+    assert ':disabled="!editing || !installed"' in panel  # Reset too
+    assert "$store.wilds.adc?.installed === false" in panel  # the tab itself is dimmed
+    board = client.get("/io/").content.decode()
+    assert "absent(c.key)" in board  # the activity board's ADC card
+    jobs = Path(finders.find("wilds/js/jobs.js")).read_text()
+    assert "present === false" in jobs
+    css = Path(finders.find("wilds/css/activity.css")).read_text()
+    assert ".board-comp.absent" in css
+    cal = client.get("/io/engineering/calibration/").content.decode()
+    assert (
+        'x-data="adcCalibration()"' in cal
+        and "(Engineering → Configuration → adc → Installed)" in cal
+    )
+
+
+def test_calibration_adc_has_the_reference_to_the_stage_position_of_both_pairs(
+    client: Client,
+) -> None:
+    cal = client.get("/io/engineering/calibration/").content.decode()
+    assert "tab === 'adc'" in cal and 'x-data="adcCalibration()"' in cal
+    assert "cal_adc" not in cal  # the placeholder button is gone
+    for text in (
+        "Reference to stage position",
+        "Stage reads now",
+        "Use the current reading",
+        "Pair would be at",
+    ):
+        assert text in cal, text
+    assert 'x-for="n in [1, 2]"' in cal  # one row per pair
+    script = Path(finders.find("wilds/js/adc.js")).read_text()
+    block = script[
+        script.index('Alpine.data("adcCalibration"') : script.index('Alpine.data("adcMonitor"')
+    ]
+    assert "zero${n}_deg" in block and "stage${n}_deg" in block
+    assert (
+        "PUT" in block and "/config/adc/cal" in block and "version: current.version" in block
+    )  # versioned, recorded
+    assert "Tracking is on" in block  # not while the pairs follow the telescope
+    assert "wilds/js/adc.js" in cal

@@ -191,6 +191,8 @@ document.addEventListener("alpine:init", () => {
 
         stack(key) { return this.pills.filter((p) => p.component === key); },
         busy(key) { return this.pills.some((p) => p.component === key && !p.leaving); },
+        /** An optional component (the ADC) that is not in the instrument: greyed out, nothing to watch. */
+        absent(key) { return Alpine.store("wilds").system?.components?.[key]?.present === false; },
         elapsed(since) { return elapsed(since, this.now); },
         percent(fraction) { return fraction == null ? 0 : Math.round(fraction * 100); },
 
