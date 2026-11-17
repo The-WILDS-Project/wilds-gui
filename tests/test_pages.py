@@ -1059,3 +1059,84 @@ def test_an_adc_command_shows_the_status_it_answers_with_at_once(client: Client)
     script = Path(finders.find("wilds/js/adc.js")).read_text()
     # otherwise the buttons stay greyed "moving" until the status stream next says it has stopped
     assert 'if (data && "pair1_deg" in data && "tracking" in data) wilds().adc = data;' in script
+
+
+@pytest.mark.parametrize("url", ["/io/", "/io/engineering/calibration/", "/to/"])
+def test_the_dock_has_a_column_of_indicators_on_every_page_with_a_dock(
+    client: Client, url: str
+) -> None:
+    html = client.get(url).content.decode()
+    assert (
+        'class="dock-body"' in html
+        and 'class="dock-main"' in html
+        and 'class="dock-column"' in html
+    )
+    assert html.index('class="dock-main"') < html.index(
+        'class="dock-column"'
+    )  # to the right of the content
+    for name in ("adcIndicator", "slitIndicator", "coverIndicator"):
+        assert f'x-data="{name}()"' in html, name
+    assert "wilds/js/indicators.js" in html
+    # shown at the full dock size only, and the head's button hides it
+    assert "$store.camera.indicators && $store.camera.shown === 'dock'" in html
+    assert 'aria-label="Indicators"' in html and "toggleIndicators()" in html
+
+
+def test_the_adc_indicator_draws_two_rings_with_ticks_the_parallactic_line_and_the_dispersion_arrow(
+    client: Client,
+) -> None:
+    html = client.get("/io/").content.decode()
+    block = html[html.index('x-data="adcIndicator()"') : html.index('x-data="slitIndicator()"')]
+    assert (
+        block.count("ind-ring ind-ring-") == 2 and block.count("ind-tick ind-tick-") == 2
+    )  # one per pair
+    assert "ind-index" in block  # the fixed reference index the ticks start from
+    assert "ringStyle(a1)" in block and "ringStyle(a2)" in block  # each turns with its own stage
+    assert "ind-parallactic" in block and "ind-arrow" in block and "ind-goal" in block
+    script = Path(finders.find("wilds/js/indicators.js")).read_text()
+    assert "wrap(v - this[key])" in script  # unwrapped: a ring never turns the long way round
+    assert "pair1_deg" in script and "pair2_deg" in script and "goal${n}_deg" in script
+    css = Path(finders.find("wilds/css/camera.css")).read_text()
+    assert "transition: transform 1s linear" in css and "prefers-reduced-motion" in css
+
+
+def test_indicators_jump_to_their_panel_only_where_there_is_a_session(client: Client) -> None:
+    script = Path(finders.find("wilds/js/indicators.js")).read_text()
+    assert 'const linkable = () => !!Alpine.store("session");' in script  # the TO page has none
+    assert (
+        '"wilds-ops-tab", "adc"' in script
+        and '"wilds-cal-tab", "slit"' in script
+        and '"wilds-cal-tab", "cover"' in script
+    )
+    assert (
+        "...base" not in script and "getOwnPropertyDescriptors" in script
+    )  # getters, not their values
+    assert "Click: the ADC tab" in script
+
+
+def test_the_indicator_column_is_remembered_per_browser_and_the_adc_indicator_dims_when_not_installed(
+    client: Client,
+) -> None:
+    camera = Path(finders.find("wilds/js/camera.js")).read_text()
+    assert (
+        'const INDICATORS_KEY = "wilds-dock-indicators"' in camera
+        and "toggleIndicators()" in camera
+    )
+    html = client.get("/io/").content.decode()
+    assert "absent: !installed" in html
+
+
+def test_no_indicator_draws_svg_through_a_template(client: Client) -> None:
+    # <template x-if> clones HTML elements: a <line> made that way is not SVG and never draws
+    html = client.get("/io/").content.decode()
+    column = html[html.index('class="dock-column"') : html.index("</aside>")]
+    assert "x-if" not in column
+    for part in (
+        'class="ind-goal ind-tick-1" x-show="goal(1)"',
+        'class="ind-parallactic" x-show="parallactic"',
+    ):
+        assert part in column, part
+    assert (
+        'y1="7" y2="16"' in column.replace('x1="50" ', "").replace(' x2="50" ', " ")
+        or 'y1="7"' in column
+    )  # the tick is on the ring

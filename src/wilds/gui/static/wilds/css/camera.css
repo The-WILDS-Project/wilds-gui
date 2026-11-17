@@ -39,6 +39,55 @@
 
 .dock-panel { padding: 0.6rem; }
 
+/* The content, and to its right a column of indicators (components/dock_indicators.html). */
+.dock-body { display: flex; align-items: flex-start; gap: 0.5rem; }
+.dock-main { flex: 1 1 auto; min-width: 0; }
+.dock-column {
+    flex: 0 0 5.75rem;
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+    padding-left: 0.5rem;
+    border-left: 1px solid var(--ui-border);
+}
+.dock-ind {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 0.1rem;
+    padding: 0.25rem 0.1rem;
+    border-radius: 0.375rem;
+    color: var(--bs-body-color);
+    text-align: center;
+    line-height: 1.1;
+}
+.dock-ind.linked { cursor: pointer; }
+.dock-ind.linked:hover, .dock-ind.linked:focus-visible { background: var(--ui-hover-bg); outline: 0; }
+.dock-ind .ind-label { font-size: 0.68rem; letter-spacing: 0.04em; text-transform: uppercase; color: var(--bs-secondary-color); }
+.dock-ind .ind-caption { font-size: 0.72rem; font-variant-numeric: tabular-nums; }
+.dock-ind svg { width: 5rem; height: 5rem; display: block; }
+.dock-ind.absent { opacity: 0.4; }
+.dock-ind .ind-scale { fill: none; stroke: var(--ui-border); stroke-width: 1; }
+.dock-ind .ind-index { fill: var(--bs-body-color); }
+.dock-ind .ind-ring { fill: none; stroke-width: 4; opacity: 0.55; }
+.dock-ind .ind-ring-1 { stroke: #38d39f; }
+.dock-ind .ind-ring-2 { stroke: #5aa9ff; }
+.dock-ind .ind-tick { stroke-width: 2.2; stroke-linecap: round; }
+.dock-ind .ind-tick-1 { stroke: #38d39f; }
+.dock-ind .ind-tick-2 { stroke: #5aa9ff; }
+.dock-ind .ind-goal { stroke-width: 1.4; stroke-dasharray: 2 2; opacity: 0.9; }
+.dock-ind .ind-parallactic { stroke: #ffc107; stroke-width: 1.1; stroke-dasharray: 3 2.5; }
+.dock-ind .ind-arrow { stroke: var(--bs-body-color); stroke-width: 2; stroke-linecap: round; fill: var(--bs-body-color); }
+.dock-ind .ind-rot { transform-origin: 50px 50px; transition: transform 1s linear; }
+.dock-ind .ind-track { fill: var(--ui-border); }
+.dock-ind .ind-jaw { fill: var(--bs-secondary-color); }
+.dock-ind .ind-gap { fill: var(--bs-body-bg); stroke: #38d39f; stroke-width: 1.4; }
+.dock-ind .ind-cloth { fill: var(--bs-secondary-color); opacity: 0.8; transition-property: height; transition-timing-function: linear; }
+.dock-ind .ind-frame { fill: var(--bs-body-bg); stroke: var(--bs-secondary-color); stroke-width: 1.5; }
+@media (prefers-reduced-motion: reduce) {
+    .dock-ind .ind-rot, .dock-ind .ind-cloth { transition: none; }
+}
+
 .dock-head {
     display: flex;
     align-items: center;
