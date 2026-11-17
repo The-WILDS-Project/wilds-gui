@@ -21,7 +21,6 @@ document.addEventListener("alpine:init", () => {
         passphrase: sessionStorage.getItem(KEY) || "",
         entry: "",
         holder: null,
-        engineering: false,
         requests: [],
         viewers: [],
         error: null,
@@ -135,7 +134,6 @@ document.addEventListener("alpine:init", () => {
                 if (!response.ok) throw new Error(`HTTP ${response.status}`);
                 const view = await response.json();
                 this.holder = view.holder;
-                this.engineering = view.engineering;
                 this.requests = view.requests;
                 this.viewers = view.viewers;
                 this.error = null;

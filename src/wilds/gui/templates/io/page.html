@@ -3,16 +3,21 @@
 {% block title %}WILDS - Instrument Operator{% endblock %}
 {% block heading %}Instrument<br>Operator{% endblock %}
 {% block control %}{% include "components/control_status.html" %}{% endblock %}
-{% block sidebar %}{% include "components/sidebar.html" with pages=io_pages url_name="io_page" %}{% endblock %}
+{% block sidebar %}{% include "components/sidebar.html" %}{% endblock %}
 {% block dock %}{% include "components/camera_dock.html" %}{% endblock %}
-{% block extra_js %}{% if page == "operations" %}<script src="{% static 'wilds/js/acquisition.js' %}?v={{ asset_version }}" defer></script>{% endif %}{% endblock %}
+{% block extra_js %}{% if engineering %}{% if page == "calibration" %}<script src="{% static 'wilds/js/guide_calibration.js' %}?v={{ asset_version }}" defer></script>
+<script src="{% static 'wilds/js/optics_calibration.js' %}?v={{ asset_version }}" defer></script>
+<script src="{% static 'wilds/js/cover.js' %}?v={{ asset_version }}" defer></script>{% elif page == "configuration" %}<script src="{% static 'wilds/js/config.js' %}?v={{ asset_version }}" defer></script>{% endif %}{% elif page == "operations" %}<script src="{% static 'wilds/js/acquisition.js' %}?v={{ asset_version }}" defer></script>{% endif %}{% endblock %}
 {% block bottom %}
+{% comment %} The Activity board is on every page but Engineering → Monitoring, which is that board in full. {% endcomment %}
+{% if not engineering or page != "monitoring" %}
 <div class="ui-bottom">
     <div class="card">
         <div class="card-header"><i class="bi bi-activity me-2"></i>Activity</div>
         <div class="card-body">{% include "components/activity_board.html" %}</div>
     </div>
 </div>
+{% endif %}
 {% endblock %}
 {% block content %}
 <div x-data x-show="$store.wilds.to.online === false" class="alert alert-warning py-2" role="status">
@@ -29,14 +34,24 @@
             {% include "components/info.html" with tip="$store.session.provenance" %}
         </span>
         <span x-data x-show="$store.session.requested && !$store.session.holder" class="badge ui-info">Control requested</span>
-        {# Hidden once control is granted: there is nothing left to request. Engineering mode is the exception: nobody releases control any more, so an engineer who holds it asks the TO for an operator's. #}
-        <span x-data x-show="$store.session.controlStatus !== 'granted' || $store.session.engineering">
+        {# Hidden once control is granted: there is nothing left to request (nobody releases it; the TO grants it to the next requester). #}
+        <span x-data x-show="$store.session.controlStatus !== 'granted'">
             {% include "components/action_button.html" with action="request_control" label="Request control" style="outline-primary" click="$store.session.requestControl()" %}
         </span>
     </div>
 </div>
 
-{% if page == "operations" %}
+{% if engineering %}
+{% comment %} The Engineering group: there is no engineering mode, so whoever holds control may calibrate and
+   configure, and each panel says why it is greyed out when you do not. {% endcomment %}
+<div class="alert alert-warning py-2" role="alert" x-data x-show="$store.wilds.warnings.length > 0">
+    <i class="bi bi-exclamation-triangle me-2"></i><span x-text="$store.wilds.warnings.join('; ')"></span>
+</div>
+{% if page == "monitoring" %}{% include "io/engineering/monitoring.html" %}
+{% elif page == "calibration" %}{% include "io/engineering/calibration.html" %}
+{% elif page == "configuration" %}{% include "io/engineering/configuration.html" %}{% endif %}
+
+{% elif page == "operations" %}
 {% comment %} The operations the instrument operator can perform, one tab each; the tab is remembered per
    browser. Test is a development helper (its tab is hidden in production). Focus and Acquisition
    fill in as wilds-control gets the telescope (plan §3.3, §3.4, §3.12). {% endcomment %}
@@ -366,5 +381,5 @@
 </div>
 {% endif %}
 
-{% if page != "operations" %}<p class="text-body-secondary">The {{ page_label|lower }} panels come here.</p>{% endif %}
+{% if page != "operations" and not engineering %}<p class="text-body-secondary">The {{ page_label|lower }} panels come here.</p>{% endif %}
 {% endblock %}

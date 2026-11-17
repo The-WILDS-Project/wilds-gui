@@ -1,0 +1,51 @@
+{% comment %} One tab per thing to calibrate; the tab is remembered per browser. The buttons of the
+   tabs other than the guide camera greyed out, with the reason, until wilds-control implements them. {% endcomment %}
+<div x-data="{ tab: (() => { try { return localStorage.getItem('wilds-cal-tab') || 'guide-camera'; } catch { return 'guide-camera'; } })(),
+               tabs: [['guide-camera', 'Guide camera'], ['lamps', 'Lamps'], ['slit', 'Slit'], ['cover', 'Cover'], ['adc', 'ADC'], ['focus', 'Focus'], ['science-cameras', 'Science cameras']],
+               pick(t) { this.tab = t; try { localStorage.setItem('wilds-cal-tab', t); } catch { /* private mode */ } } }">
+    <ul class="nav nav-tabs flex-nowrap overflow-x-auto mb-3" role="tablist">
+        <template x-for="t in tabs" :key="t[0]">
+            <li class="nav-item" role="presentation">
+                <button type="button" class="nav-link" role="tab" :class="t[0] === tab ? 'active' : ''" :aria-selected="t[0] === tab"
+                        @click="pick(t[0])" style="white-space: nowrap;" x-text="t[1]"></button>
+            </li>
+        </template>
+    </ul>
+
+    <div x-show="tab === 'guide-camera'">
+        <p class="text-body-secondary small">Dark and bias frames with the guide camera: a dark needs the instrument cover closed (tell the TO first), and the frames and their median are kept in a calibration session.</p>
+        {% include "components/guide_calibration.html" %}
+    </div>
+    <div x-show="tab === 'lamps'">
+        <div class="d-flex flex-wrap gap-2">
+            {% include "components/action_button.html" with action="cal_lamps" label="Lamps" style="outline-primary" %}
+        </div>
+    </div>
+    <div x-show="tab === 'slit'">
+        <p class="text-body-secondary small">The slit stage, and the calibration of the guide camera and the slit from the sky: with the telescope on a star field, plate solve a frame with the slit closed, then find the slit in frames with it open at two widths (only one jaw moves, so the gap opens from a fixed edge). Watch the frames in the guide-camera dock.</p>
+        <div class="card mb-3"><div class="card-body py-2">{% include "components/slit_stage.html" %}</div></div>
+        <h6 class="mb-2">Guide camera and slit calibration</h6>
+        {% include "components/optics_calibration.html" %}
+    </div>
+    <div x-show="tab === 'cover'">
+        <p class="text-body-secondary small">The instrument cover: a rolling opaque cloth at the top of the LDT instrument cube. Closed, it blocks the light to WILDS (for the guide camera's darks and biases). Before moving it, tell the Telescope Operator: a dialog reminds you.</p>
+        <div class="card mb-3"><div class="card-body py-2">{% include "components/cover_controls.html" %}</div></div>
+    </div>
+    <div x-show="tab === 'adc'">
+        <div class="d-flex flex-wrap gap-2">
+            {% include "components/action_button.html" with action="cal_adc" label="ADC" style="outline-primary" %}
+        </div>
+    </div>
+    <div x-show="tab === 'focus'">
+        <div class="d-flex flex-wrap gap-2">
+            {% include "components/action_button.html" with action="cal_focus" label="Focus" style="outline-primary" %}
+        </div>
+    </div>
+    <div x-show="tab === 'science-cameras'">
+        <div class="d-flex flex-wrap gap-2">
+            {% include "components/action_button.html" with action="cal_dark" label="Dark" style="outline-primary" %}
+            {% include "components/action_button.html" with action="cal_bias" label="Bias" style="outline-primary" %}
+            {% include "components/action_button.html" with action="cal_flat" label="Flat" style="outline-primary" %}
+        </div>
+    </div>
+</div>

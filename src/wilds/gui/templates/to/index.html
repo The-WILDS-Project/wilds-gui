@@ -52,7 +52,6 @@
                                     <span>
                                         <strong x-text="holder.name"></strong>
                                         <code x-text="holder.code"></code>{% include "components/info.html" with tip="holder.provenance" %}
-                                        <span class="badge ui-warning" x-show="engineering">engineering</span>
                                         <button type="button" class="btn btn-sm btn-outline-danger ms-2"
                                                 @click="revoke()">Revoke control</button>
                                     </span>
