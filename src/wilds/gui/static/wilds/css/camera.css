@@ -61,6 +61,13 @@
     text-align: center;
     line-height: 1.1;
 }
+/* A horizontal line between one indicator and the next. */
+.dock-ind + .dock-ind {
+    border-top: 1px solid var(--ui-border);
+    border-top-left-radius: 0;
+    border-top-right-radius: 0;
+    padding-top: 0.5rem;
+}
 .dock-ind.linked { cursor: pointer; }
 .dock-ind.linked:hover, .dock-ind.linked:focus-visible { background: var(--ui-hover-bg); outline: 0; }
 .dock-ind .ind-label { font-size: 0.68rem; letter-spacing: 0.04em; text-transform: uppercase; color: var(--bs-secondary-color); }
