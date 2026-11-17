@@ -11,7 +11,8 @@
  *    zero points, what tracking last worked out and with which weather, and the settings.
  *  - "adcCalibration": Engineering → Calibration → ADC: each pair's reference to its stage position
  *    (the zero point: what the stage reads when its pair is at the reference), saved in the ADC's
- *    calibration values (PUT /config/adc/cal) with who and why.
+ *    calibration values (PUT /config/adc/cal) with who and why; and a jog to turn a stage, in its own
+ *    coordinates, to its reference mark (POST /adc/jog), which tracking refuses.
  * All text goes in with x-text.
  */
 document.addEventListener("alpine:init", () => {
@@ -37,6 +38,9 @@ document.addEventListener("alpine:init", () => {
         });
         const data = await response.json().catch(() => ({}));
         if (!response.ok) throw new Error(data.message || data.detail || `HTTP ${response.status}`);
+        // Every ADC command answers with the ADC's status as it is now: show it at once, without
+        // waiting for the status stream (a button would stay greyed "moving" for up to a second).
+        if (data && "pair1_deg" in data && "tracking" in data) wilds().adc = data;
         return data;
     }
 
@@ -147,6 +151,35 @@ document.addEventListener("alpine:init", () => {
         reason: "",
         saving: false,
         error: null,
+        steps: [0.01, 0.05, 0.1, 0.5, 1, 5, 10, 45, 90],   // degrees per press of a jog button
+        step: 1,
+        goto1: "",           // the reading to jog stage 1 / stage 2 to, as typed
+        goto2: "",
+        jogging: false,
+        jogError: null,
+
+        // -- jogging a stage: its own coordinates, the zero points play no part ---------------
+        get whyNotJog() {
+            if (this.whyNotCommand) return this.whyNotCommand;
+            if (this.tracking) return "Tracking is on: switch it off to jog a stage (Operations → ADC)";
+            if (this.moving) return "The ADC is moving";
+            return "";
+        },
+        gotoOk(n) { const t = this[`goto${n}`]; return String(t).trim() !== "" && Number.isFinite(Number(t)); },
+        whyNotGoto(n) { return this.whyNotJog || (this.gotoOk(n) ? "" : "Type the reading to go to"); },
+        async jog(n, body) {
+            if (this.whyNotJog) return;
+            this.jogging = true; this.jogError = null;
+            try { await api("/adc/jog", { stage: n, ...body }); }
+            catch (e) { this.jogError = String(e.message || e); }
+            this.jogging = false;
+        },
+        jogBy(n, sign) { return this.jog(n, { by_deg: sign * Number(this.step) }); },
+        async goTo(n) {
+            if (this.whyNotGoto(n)) return;
+            await this.jog(n, { to_deg: Number(this[`goto${n}`]) });
+            if (!this.jogError) this[`goto${n}`] = "";
+        },
 
         saved(n) { return this.adc?.[`zero${n}_deg`] ?? 0; },
         stage(n) { return this.installed ? (this.adc?.[`stage${n}_deg`] ?? null) : null; },

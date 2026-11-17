@@ -1033,3 +1033,29 @@ def test_calibration_adc_has_the_reference_to_the_stage_position_of_both_pairs(
     )  # versioned, recorded
     assert "Tracking is on" in block  # not while the pairs follow the telescope
     assert "wilds/js/adc.js" in cal
+
+
+def test_calibration_adc_can_jog_a_stage_in_its_own_coordinates(client: Client) -> None:
+    cal = client.get("/io/engineering/calibration/").content.decode()
+    for text in (
+        "Jog a stage",
+        'aria-label="Step in degrees"',
+        "go to",
+        "jogBy(n, -1)",
+        "jogBy(n, 1)",
+        "goTo(n)",
+    ):
+        assert text in cal, text
+    script = Path(finders.find("wilds/js/adc.js")).read_text()
+    block = script[
+        script.index('Alpine.data("adcCalibration"') : script.index('Alpine.data("adcMonitor"')
+    ]
+    assert '"/adc/jog"' in block and "by_deg" in block and "to_deg" in block
+    assert "Tracking is on: switch it off to jog a stage" in block  # as the server refuses it
+    assert "whyNotCommand" in block  # not installed, not the holder: greyed out with the reason
+
+
+def test_an_adc_command_shows_the_status_it_answers_with_at_once(client: Client) -> None:
+    script = Path(finders.find("wilds/js/adc.js")).read_text()
+    # otherwise the buttons stay greyed "moving" until the status stream next says it has stopped
+    assert 'if (data && "pair1_deg" in data && "tracking" in data) wilds().adc = data;' in script
