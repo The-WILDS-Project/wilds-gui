@@ -1192,3 +1192,16 @@ def test_operations_adc_can_park_both_pairs_at_their_reference(client: Client) -
         "The pairs are already at their reference" in block and "whyNotMove" in block
     )  # greyed out like the other moves
     assert "nearZero" in script
+
+
+def test_a_horizontal_line_separates_the_indicators_in_the_column(client: Client) -> None:
+    css = Path(finders.find("wilds/css/camera.css")).read_text()
+    rule = css[css.index(".dock-ind + .dock-ind") :].split("}")[0]
+    assert (
+        "border-top: 1px solid var(--ui-border)" in rule
+    )  # between each indicator and the one above
+    html = client.get("/io/").content.decode()
+    column = html[html.index('class="dock-column"') : html.index("</aside>")]
+    assert (
+        column.count('class="dock-ind"') == 3
+    )  # so two lines: none above the first or below the last
