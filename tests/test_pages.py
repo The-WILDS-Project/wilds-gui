@@ -1140,3 +1140,55 @@ def test_no_indicator_draws_svg_through_a_template(client: Client) -> None:
         'y1="7" y2="16"' in column.replace('x1="50" ', "").replace(' x2="50" ', " ")
         or 'y1="7"' in column
     )  # the tick is on the ring
+
+
+def test_the_parallactic_line_is_the_telescopes_own_and_does_not_need_adc_tracking(
+    client: Client,
+) -> None:
+    script = Path(finders.find("wilds/js/indicators.js")).read_text()
+    block = script[
+        script.index('Alpine.data("adcIndicator"') : script.index('Alpine.data("slitIndicator"')
+    ]
+    # from the telescope's telemetry (a target has a parallactic angle whether or not the ADC tracks)
+    assert "wilds().telescope?.telemetry" in block and "parallactic_angle_deg" in block
+    parallactic = block[block.index("get parallactic()") : block.index("goal(n)")]
+    assert "this.target" not in parallactic and "adc.target" not in parallactic
+    assert "get parallacticDir()" in block and "direction_offset_deg" in block
+
+
+def test_the_parallactic_line_is_orange_like_the_slits_fixed_jaw(client: Client) -> None:
+    css = Path(finders.find("wilds/css/camera.css")).read_text()
+    line = css[css.index(".dock-ind .ind-parallactic") :].split("}")[0]
+    assert "stroke: #ff7a1a" in line  # the app's orange, as the fixed-jaw line of the slit overlay
+
+
+def test_the_adc_scale_has_degree_marks_every_30_degrees_and_is_a_bit_thicker(
+    client: Client,
+) -> None:
+    html = client.get("/io/").content.decode()
+    block = html[html.index('x-data="adcIndicator()"') : html.index('x-data="slitIndicator()"')]
+    assert (
+        block.count('class="ind-mark"') == 8 and block.count('class="ind-mark ind-mark-major"') == 3
+    )
+    # 11 marks: 30, 60, 90 ... 330 degrees (the reference index is the 0): the 90s, 180 and 270 are longer
+    css = Path(finders.find("wilds/css/camera.css")).read_text()
+    scale = css[css.index(".dock-ind .ind-scale") :].split("}")[0]
+    assert "stroke-width: 1.8" in scale  # was 1
+    assert "x-for" not in block  # the marks are written out: a template does not make SVG
+
+
+def test_operations_adc_can_park_both_pairs_at_their_reference(client: Client) -> None:
+    html = client.get("/io/operations/").content.decode()
+    panel = html[html.index('x-data="adcPanel()"') :]
+    assert '@click="park()"' in panel and "Park" in panel and "whyNotPark" in panel
+    # Reset is still only for undoing typed values
+    assert ':disabled="!editing || !installed" @click="reset()"' in panel
+    script = Path(finders.find("wilds/js/adc.js")).read_text()
+    block = script[
+        script.index('Alpine.data("adcPanel"') : script.index('Alpine.data("adcCalibration"')
+    ]
+    assert "{ pair1_deg: 0, pair2_deg: 0 }" in block  # both pairs, to the reference
+    assert (
+        "The pairs are already at their reference" in block and "whyNotMove" in block
+    )  # greyed out like the other moves
+    assert "nearZero" in script

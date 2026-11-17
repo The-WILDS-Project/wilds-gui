@@ -5,7 +5,8 @@
  *
  *  - "adcIndicator": the two prism pairs of the ADC as two rings that turn with their stages, each
  *    with a tick that sits at the fixed index (top) when the pair is at its reference; the direction
- *    the dispersion must have (the parallactic angle seen from the slit) as a dashed line; and the
+ *    the dispersion must have (the parallactic angle seen from the slit, from the telescope's own
+ *    report, so it shows whenever there is a target, tracking or not) as a dashed line; and the
  *    dispersion the pairs make as an arrow, which lies along that line when tracking cancels the
  *    atmosphere. Angles are counter-clockwise from the top, as in the slit overlay.
  *  - "slitIndicator": the slit's gap between its fixed jaw and the moving one, over its 0.5-4 arcsec.
@@ -63,10 +64,21 @@ document.addEventListener("alpine:init", () => {
         get arrowStyle() { return `transform: rotate(${-this.dir}deg)`; },
         get arrowLength() { return Math.min(36, (36 * this.makes) / (this.adc?.dmax_arcsec || 6)); },
         get showArrow() { return this.makes > 0.03; },
+        /** The telescope's target as the sky shows it now: it has a parallactic angle whether or not the ADC tracks. */
+        get sky() {
+            const t = wilds().telescope?.telemetry;
+            return t && t.parallactic_angle_deg !== null && t.parallactic_angle_deg !== undefined ? t : null;
+        },
+        /** The direction the dispersion must have in the instrument: the parallactic angle minus the slit PA, plus the calibrated offset. */
+        get parallacticDir() {
+            const t = this.sky;
+            if (!t || !this.known) return null;
+            return ((((t.parallactic_angle_deg - (t.rot_pa ?? 0) + (this.adc.direction_offset_deg ?? 0)) % 360) + 360) % 360);
+        },
         get parallactic() {
-            const t = this.target;
-            if (!t) return null;
-            const [x1, y1] = point(t.direction_deg, 44), [x2, y2] = point(t.direction_deg + 180, 44);
+            const d = this.parallacticDir;
+            if (d === null) return null;
+            const [x1, y1] = point(d, 44), [x2, y2] = point(d + 180, 44);
             return { x1, y1, x2, y2 };
         },
         goal(n) {
@@ -90,11 +102,12 @@ document.addEventListener("alpine:init", () => {
                 `makes ${num(a.dispersion_arcsec, 2)}″ directed ${num(a.direction_deg, 1)}° (at most ${num(a.dmax_arcsec, 1)}″)`,
                 `tracking: ${a.tracking ? a.tracking_state : "off"}`,
             ];
+            const sky = this.sky;
+            if (sky) {
+                lines.push(`the target: parallactic angle ${num(sky.parallactic_angle_deg, 1)}° on the sky, slit PA ${num(sky.rot_pa, 1)}°, so ${num(this.parallacticDir, 1)}° in the instrument (the dashed line)`);
+            }
             if (t) {
-                lines.push(
-                    `the atmosphere needs ${num(t.atmosphere_arcsec, 2)}″ at zenith distance ${num(t.zenith_distance_deg, 1)}°`,
-                    `parallactic angle ${num(t.parallactic_angle_deg, 1)}° on the sky, slit PA ${num(t.rot_pa_deg, 1)}°: ${num(t.direction_deg, 1)}° in the instrument`,
-                );
+                lines.push(`the atmosphere needs ${num(t.atmosphere_arcsec, 2)}″ at zenith distance ${num(t.zenith_distance_deg, 1)}°`);
                 if (t.saturated) lines.push("more than the ADC can cancel");
             }
             if (this.linked) lines.push("Click: the ADC tab");

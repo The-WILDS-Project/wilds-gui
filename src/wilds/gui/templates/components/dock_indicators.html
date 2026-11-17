@@ -11,7 +11,21 @@ Operator's pages an indicator jumps to its panel; on the TO's page they only sho
          :tabindex="linked ? 0 : -1" @click="open()" @keydown.enter="open()" x-tooltip="tip" :aria-label="'ADC: ' + caption">
         <span class="ind-label">ADC</span>
         <svg viewBox="0 0 100 100" aria-hidden="true">
-            <circle class="ind-scale" cx="50" cy="50" r="47"></circle>
+            <circle class="ind-scale" cx="50" cy="50" r="47.5"></circle>
+            {# The degree marks of the fixed scale, every 30° counter-clockwise from the top (the index is 0°); the 90s are longer. Written out, not made by x-for: a template does not make SVG. #}
+            <g class="ind-marks">
+                <line class="ind-mark" x1="27.75" y1="11.46" x2="26.25" y2="8.86"></line>
+                <line class="ind-mark" x1="11.46" y1="27.75" x2="8.86" y2="26.25"></line>
+                <line class="ind-mark ind-mark-major" x1="7.50" y1="50.00" x2="2.50" y2="50.00"></line>
+                <line class="ind-mark" x1="11.46" y1="72.25" x2="8.86" y2="73.75"></line>
+                <line class="ind-mark" x1="27.75" y1="88.54" x2="26.25" y2="91.14"></line>
+                <line class="ind-mark ind-mark-major" x1="50.00" y1="92.50" x2="50.00" y2="97.50"></line>
+                <line class="ind-mark" x1="72.25" y1="88.54" x2="73.75" y2="91.14"></line>
+                <line class="ind-mark" x1="88.54" y1="72.25" x2="91.14" y2="73.75"></line>
+                <line class="ind-mark ind-mark-major" x1="92.50" y1="50.00" x2="97.50" y2="50.00"></line>
+                <line class="ind-mark" x1="88.54" y1="27.75" x2="91.14" y2="26.25"></line>
+                <line class="ind-mark" x1="72.25" y1="11.46" x2="73.75" y2="8.86"></line>
+            </g>
             <polygon class="ind-index" points="46.5,1 53.5,1 50,8"></polygon>  <!-- the fixed reference index -->
             <g class="ind-rot" :style="ringStyle(a1)">
                 <circle class="ind-ring ind-ring-1" cx="50" cy="50" r="38.5"></circle>

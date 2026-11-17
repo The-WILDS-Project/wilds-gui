@@ -63,7 +63,11 @@ stages' own readings and the model's inputs are on Engineering → Monitoring.
                 <span :class="whyNotApply ? 'ui-unavailable' : ''" x-tooltip="whyNotApply">
                     <button type="button" class="btn btn-primary" :disabled="!!whyNotApply || sending" @click="apply()">
                         <i class="bi bi-check-lg me-1"></i>Apply</button></span>
-                <button type="button" class="btn btn-outline-secondary" :disabled="!editing || !installed" @click="reset()">Reset</button>
+                <button type="button" class="btn btn-outline-secondary" :disabled="!editing || !installed" @click="reset()"
+                        x-tooltip="'Put the boxes back to where the pairs are'">Reset</button>
+                <span :class="whyNotPark ? 'ui-unavailable' : ''" x-tooltip="whyNotPark || 'Move both pairs to their reference (0°): they then make no dispersion'">
+                    <button type="button" class="btn btn-outline-secondary" :disabled="!!whyNotPark || sending" @click="park()">
+                        <i class="bi bi-p-square me-1"></i>Park</button></span>
             </div>
         </div>
         <div class="alert alert-danger py-2 mt-2 mb-0" role="alert" x-show="error">
