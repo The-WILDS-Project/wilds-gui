@@ -1,6 +1,8 @@
 {% comment %}
 Collapsible sidebar (MAST components/sidebar.html); collapsed state remembered per browser.
-Takes pages ((slug, label, icon) tuples) and url_name (the URL pattern that takes the slug).
+Takes ``nav``: a list of {label, icon, url, active} entries, and groups {id, label, icon, active,
+children: [{label, icon, url, active}]} that open as a submenu (the one holding the page shown is
+open). static/wilds/js/ui.js opens the submenu and turns its arrow.
 {% endcomment %}
 <nav class="sidebar" id="sidebar">
     <div class="sidebar-header">
@@ -9,11 +11,28 @@ Takes pages ((slug, label, icon) tuples) and url_name (the URL pattern that take
         </button>
     </div>
     <div class="sidebar-menu">
-        {% for slug, label, icon in pages %}
-            <a href="{% url url_name slug %}" class="sidebar-item{% if slug == page %} active{% endif %}" title="{{ label }}">
-                <i class="bi {{ icon }}"></i>
-                <span class="sidebar-item-text">{{ label }}</span>
-            </a>
+        {% for item in nav %}
+            {% if item.children %}
+                <a href="#sub-{{ item.id }}" class="sidebar-item{% if item.active %} active{% endif %}" data-bs-toggle="collapse" data-bs-target="#sub-{{ item.id }}"
+                   role="button" aria-expanded="false" aria-controls="sub-{{ item.id }}" title="{{ item.label }}">
+                    <i class="bi {{ item.icon }}"></i>
+                    <span class="sidebar-item-text">{{ item.label }}</span>
+                    <i class="bi bi-chevron-right sidebar-item-arrow"></i>
+                </a>
+                <div class="collapse sidebar-submenu" id="sub-{{ item.id }}">
+                    {% for child in item.children %}
+                        <a href="{{ child.url }}" class="sidebar-subitem{% if child.active %} active{% endif %}" title="{{ child.label }}">
+                            <i class="bi {{ child.icon }}"></i>
+                            <span class="sidebar-item-text">{{ child.label }}</span>
+                        </a>
+                    {% endfor %}
+                </div>
+            {% else %}
+                <a href="{{ item.url }}" class="sidebar-item{% if item.active %} active{% endif %}" title="{{ item.label }}">
+                    <i class="bi {{ item.icon }}"></i>
+                    <span class="sidebar-item-text">{{ item.label }}</span>
+                </a>
+            {% endif %}
         {% endfor %}
     </div>
 </nav>

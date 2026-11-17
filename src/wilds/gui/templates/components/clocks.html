@@ -1,4 +1,4 @@
-{% comment %} Server time in LDT and UT, and (operator and engineering pages) this browser's own LT.
+{% comment %} Server time in LDT and UT, and (the operator page) this browser's own LT.
    The server's clock comes in the status stream; clock.js keeps it ticking.
 {% endcomment %}
 <div x-data class="ui-clocks" :class="{ stale: !$store.clock.live }"

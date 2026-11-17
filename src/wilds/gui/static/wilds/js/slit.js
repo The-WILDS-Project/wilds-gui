@@ -96,16 +96,10 @@ document.addEventListener("alpine:init", () => {
                 lx: top[0] + 0.5, ly: top[1] + 0.5,
             };
         },
-        /** Whoever holds control (the Instrument Operator or engineering) may start and stop the live
-         *  video; the TO and viewers just watch. */
-        get canStream() {
-            return !!Alpine.store("session")?.holder;
-        },
-        /** Only the Instrument Operator holding control (not engineering mode) turns the slit with the
-         *  handle; everyone else just watches. */
+        /** Whoever holds control may start and stop the live video, turn the slit with the handle and
+         *  switch the view; the TO and viewers just watch. */
         get canOperate() {
-            const s = Alpine.store("session");
-            return !!s?.holder && !s.engineering;
+            return !!Alpine.store("session")?.holder;
         },
         get show() {
             const cam = Alpine.store("camera");

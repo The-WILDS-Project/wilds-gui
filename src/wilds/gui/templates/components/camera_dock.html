@@ -1,7 +1,7 @@
 {% load static %}
 {% comment %}
 The guide-camera dock (plan §3.8): the live view to the right of the page, on the Instrument
-Operator, Engineering and Telescope Operator pages. Three sizes: dock (the working size, with the controls),
+Operator and Telescope Operator pages. Three sizes: dock (the working size, with the controls),
 thumb (a small picture to keep an eye on while working in a panel) and off (a rail with a
 button; the video socket is closed). The choice is remembered per browser; a narrow window shows
 the dock as a thumbnail. Logic and the video socket: static/wilds/js/camera.js.
@@ -30,9 +30,9 @@ the dock as a thumbnail. Logic and the video socket: static/wilds/js/camera.js.
             <strong>Guide camera</strong>
             <span class="dock-state text-body-secondary small" x-text="$store.camera.headline"></span>
             <span class="ms-auto d-flex gap-1">
-                {# Start / stop the live video: whoever holds control, the Instrument Operator or engineering (static/wilds/js/slit.js canStream), at any size. #}
+                {# Start / stop the live video: whoever holds control (static/wilds/js/slit.js canOperate), at any size. #}
                 <button type="button" class="btn btn-sm" :class="$store.camera.streaming ? 'btn-primary' : 'btn-outline-primary'"
-                        x-show="$store.slit.canStream && !$store.camera.view"
+                        x-show="$store.slit.canOperate && !$store.camera.view"
                         :disabled="!$store.jobs.canControl || $store.camera.busy || (!$store.camera.streaming && !$store.wilds.guide_camera)"
                         @click="$store.camera.streaming ? $store.camera.stop() : $store.camera.start()"
                         x-tooltip="$store.camera.streaming ? 'Stop the live video' : 'Start the live video'"
@@ -146,10 +146,10 @@ the dock as a thumbnail. Logic and the video socket: static/wilds/js/camera.js.
              x-effect="sync()">
             <div x-tooltip="$store.jobs.canControl ? '' : $store.jobs.whyNot" class="d-flex flex-column gap-2">
                 <div class="d-flex gap-2">
-                    <button type="button" class="btn btn-sm btn-primary" x-show="$store.slit.canStream && !$store.camera.streaming"
+                    <button type="button" class="btn btn-sm btn-primary" x-show="$store.slit.canOperate && !$store.camera.streaming"
                             :disabled="!$store.jobs.canControl || $store.camera.busy || !$store.wilds.guide_camera"
                             @click="$store.camera.start()"><i class="bi bi-play-fill me-1"></i>Start live capture</button>
-                    <button type="button" class="btn btn-sm btn-outline-primary" x-show="$store.slit.canStream && $store.camera.streaming"
+                    <button type="button" class="btn btn-sm btn-outline-primary" x-show="$store.slit.canOperate && $store.camera.streaming"
                             :disabled="!$store.jobs.canControl || $store.camera.busy"
                             @click="$store.camera.stop()"><i class="bi bi-stop-fill me-1"></i>Stop live capture</button>
                     <a class="btn btn-sm btn-outline-secondary" target="_blank" rel="noopener"

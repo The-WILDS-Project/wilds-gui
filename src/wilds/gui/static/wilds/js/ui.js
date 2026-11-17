@@ -274,9 +274,7 @@ document.addEventListener("DOMContentLoaded", () => {
     sidebar.querySelectorAll(".sidebar-submenu").forEach((submenu) => {
         const trigger = sidebar.querySelector(`[data-bs-target="#${submenu.id}"]`);
         const arrow = trigger?.querySelector(".sidebar-item-arrow");
-        if (submenu.querySelector(".sidebar-subitem.active")) {
-            new bootstrap.Collapse(submenu, { toggle: false }).show();
-        }
+        // The listeners first: opening the submenu of the page shown must turn its arrow too.
         submenu.addEventListener("show.bs.collapse", () => {
             arrow?.classList.replace("bi-chevron-right", "bi-chevron-down");
             trigger?.setAttribute("aria-expanded", "true");
@@ -285,5 +283,8 @@ document.addEventListener("DOMContentLoaded", () => {
             arrow?.classList.replace("bi-chevron-down", "bi-chevron-right");
             trigger?.setAttribute("aria-expanded", "false");
         });
+        if (submenu.querySelector(".sidebar-subitem.active")) {
+            new bootstrap.Collapse(submenu, { toggle: false }).show();
+        }
     });
 });

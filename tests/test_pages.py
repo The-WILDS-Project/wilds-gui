@@ -40,7 +40,15 @@ def test_root_redirects_to_io(client: Client) -> None:
 
 
 @pytest.mark.parametrize(
-    "url", ["/to/", "/io/", "/io/products/", "/eng/", "/eng/calibration/", "/eng/configuration/"]
+    "url",
+    [
+        "/to/",
+        "/io/",
+        "/io/products/",
+        "/io/engineering/",
+        "/io/engineering/calibration/",
+        "/io/engineering/configuration/",
+    ],
 )
 def test_pages_render(client: Client, url: str) -> None:
     response = client.get(url)
@@ -100,7 +108,7 @@ def test_holder_code_has_the_holder_origin_tooltip(client: Client) -> None:
     # The control pill's tooltip carries where the holder comes from (status.js, session.js).
     for script in ("status.js", "session.js"):
         assert "holder_info" in Path(finders.find(f"wilds/js/{script}")).read_text()
-    for url in ("/io/", "/eng/", "/to/"):
+    for url in ("/io/", "/io/engineering/", "/to/"):
         assert "controlView" in client.get(url).content.decode()
 
 
@@ -135,32 +143,42 @@ def test_to_page_has_grant_refuse_and_revoke(client: Client) -> None:
     [
         ("/io/", "WILDS - Instrument Operator"),
         ("/io/products/", "WILDS - Instrument Operator"),
-        ("/eng/calibration/", "WILDS - Engineering"),
+        ("/io/engineering/calibration/", "WILDS - Instrument Operator"),  # no engineering role
         ("/to/", "WILDS - Telescope Operator"),
-        ("/eng/", "WILDS - Engineering"),
+        ("/io/engineering/", "WILDS - Instrument Operator"),
     ],
 )
 def test_page_titles(client: Client, url: str, title: str) -> None:
     assert f"<title>{title}</title>" in client.get(url).content.decode()
 
 
-def test_io_engineering_moved_to_eng(client: Client) -> None:
-    response = client.get("/io/engineering/")
-    assert response.status_code == 302 and response["Location"] == "/eng/"
-    assert "/io/engineering/" not in client.get("/io/").content.decode()  # not in the sidebar
+def test_the_engineering_pages_are_part_of_the_instrument_operators_gui(client: Client) -> None:
+    for old, new in (
+        ("/eng/", "/io/engineering/"),
+        ("/eng/calibration/", "/io/engineering/calibration/"),
+        ("/io/calibration/", "/io/engineering/calibration/"),
+        ("/io/configuration/", "/io/engineering/configuration/"),
+    ):
+        response = client.get(old)
+        assert response.status_code == 302 and response["Location"] == new, old
+    html = client.get("/io/").content.decode()
+    assert 'data-bs-target="#sub-engineering"' in html  # the Engineering group of the sidebar
+    for page in ("monitoring", "calibration", "configuration"):
+        assert f'href="/io/engineering/{page}/"' in html
 
 
-def test_eng_page_asks_for_the_passphrase(client: Client) -> None:
-    html = client.get("/eng/").content.decode()
-    assert "$store.session.enterEngineering(this.passphrase)" in html
+def test_there_is_no_engineering_mode_or_passphrase_box(client: Client) -> None:
+    html = client.get("/io/engineering/").content.decode()
+    assert "enterEngineering" not in html and "Engineering passphrase" not in html
     assert "$store.session.requestControl()" in html and "Request control" in html
     assert "Release control" not in html and "release()" not in html
     assert "$store.wilds.warnings" in html  # configuration warnings
+    assert client.get("/eng/passphrase/").status_code == 302  # an old link still lands in the GUI
 
 
 def test_to_online_status_is_in_the_header_except_on_the_to_page(client: Client) -> None:
     assert "$store.wilds.toView" in client.get("/io/").content.decode()
-    assert "$store.wilds.toView" in client.get("/eng/").content.decode()
+    assert "$store.wilds.toView" in client.get("/io/engineering/").content.decode()
     assert "$store.wilds.toView" not in client.get("/to/").content.decode()  # the TO page is the TO
 
 
@@ -178,9 +196,9 @@ def test_io_page_warns_when_the_to_is_offline(client: Client) -> None:
         ("/instrument-operator/", "/io/"),
         ("/instop/", "/io/"),
         ("/instop/products/", "/io/products/"),
-        ("/engineering/calibration/", "/eng/calibration/"),
+        ("/engineering/calibration/", "/io/engineering/calibration/"),
         ("/instrument-operator/products/", "/io/products/"),
-        ("/engineering/", "/eng/"),
+        ("/engineering/", "/io/engineering/"),
     ],
 )
 def test_alias_paths_redirect_to_the_canonical_page(
@@ -201,9 +219,9 @@ def test_alias_without_a_trailing_slash_gets_there_too(client: Client) -> None:
     [
         ("/io/", "Instrument<br>Operator"),
         ("/io/products/", "Instrument<br>Operator"),  # no area suffix
-        ("/eng/configuration/", "Engineering"),
+        ("/io/engineering/configuration/", "Instrument<br>Operator"),
         ("/to/", "Telescope<br>Operator"),
-        ("/eng/", "Engineering"),
+        ("/io/engineering/", "Instrument<br>Operator"),
     ],
 )
 def test_header_text_is_just_the_role(client: Client, url: str, heading: str) -> None:
@@ -211,7 +229,9 @@ def test_header_text_is_just_the_role(client: Client, url: str, heading: str) ->
     assert f'<div class="ui-title">{heading}</div>' in html
 
 
-@pytest.mark.parametrize(("url", "has_lt"), [("/io/", True), ("/eng/", True), ("/to/", False)])
+@pytest.mark.parametrize(
+    ("url", "has_lt"), [("/io/", True), ("/io/engineering/", True), ("/to/", False)]
+)
 def test_header_clocks_follow_the_title(client: Client, url: str, has_lt: bool) -> None:
     html = client.get(url).content.decode()
     assert html.index('class="ui-title"') < html.index('class="ui-clocks"')
@@ -233,7 +253,9 @@ def test_the_link_is_called_the_server(client: Client) -> None:
     assert "wilds-control: " not in html
 
 
-@pytest.mark.parametrize("url", ["/to/", "/io/", "/io/products/", "/eng/", "/eng/calibration/"])
+@pytest.mark.parametrize(
+    "url", ["/to/", "/io/", "/io/products/", "/io/engineering/", "/io/engineering/calibration/"]
+)
 def test_no_template_comments_leak_into_the_page(client: Client, url: str) -> None:
     """Django's {# #} comments are single-line only; a multi-line one renders as visible text."""
     html = client.get(url).content.decode()
@@ -242,9 +264,12 @@ def test_no_template_comments_leak_into_the_page(client: Client, url: str) -> No
 
 
 def test_header_says_control_not_wilds_control(client: Client) -> None:
-    for url in ("/to/", "/eng/"):  # these show who holds control
+    html = client.get("/to/").content.decode()  # the TO page shows who holds control
+    assert "$store.wilds.controlView" in html and ">Control:</span>" in html
+    assert "WILDS control" not in html
+    for url in ("/io/", "/io/engineering/"):  # the operator's pages show this session's status
         html = client.get(url).content.decode()
-        assert "$store.wilds.controlView" in html and ">Control:</span>" in html
+        assert "$store.session.controlView" in html and ">Control:</span>" in html
         assert "WILDS control" not in html
 
 
@@ -303,19 +328,27 @@ def test_io_sidebar_has_only_operations_and_products(client: Client) -> None:
 
 
 def test_eng_sidebar_has_monitoring_calibration_and_configuration(client: Client) -> None:
-    html = client.get("/eng/").content.decode()
+    html = client.get("/io/engineering/").content.decode()
     for page in ("monitoring", "calibration", "configuration"):
-        assert f'href="/eng/{page}/"' in html
-    assert 'sidebar-item active" title="Monitoring"' in html
+        assert f'href="/io/engineering/{page}/"' in html
+    assert 'sidebar-subitem active" title="Monitoring"' in html
     assert (
-        'sidebar-item active" title="Calibration"'
-        in client.get("/eng/calibration/").content.decode()
+        'sidebar-subitem active" title="Calibration"'
+        in client.get("/io/engineering/calibration/").content.decode()
     )
+    # the group is a submenu of the Instrument Operator's sidebar, next to Operations and Products
+    assert 'title="Operations"' in html and 'title="Products"' in html
+    assert (
+        'sidebar-item active" data-bs-toggle="collapse"' in html
+    )  # and is marked while one of its pages is shown
 
 
 @pytest.mark.parametrize(
     ("old", "new"),
-    [("/io/calibration/", "/eng/calibration/"), ("/io/configuration/", "/eng/configuration/")],
+    [
+        ("/io/calibration/", "/io/engineering/calibration/"),
+        ("/io/configuration/", "/io/engineering/configuration/"),
+    ],
 )
 def test_calibration_and_configuration_moved_from_io_to_eng(
     client: Client, old: str, new: str
@@ -326,9 +359,9 @@ def test_calibration_and_configuration_moved_from_io_to_eng(
 
 
 def test_eng_pages_have_their_own_content(client: Client) -> None:
-    mon = client.get("/eng/").content.decode()
-    cal = client.get("/eng/calibration/").content.decode()
-    cfg = client.get("/eng/configuration/").content.decode()
+    mon = client.get("/io/engineering/").content.decode()
+    cal = client.get("/io/engineering/calibration/").content.decode()
+    cfg = client.get("/io/engineering/configuration/").content.decode()
     assert "Archon VIS" in mon and "cal_lamps" not in mon and "cfg_slit" not in mon
     for action in (
         "lamps",
@@ -340,7 +373,7 @@ def test_eng_pages_have_their_own_content(client: Client) -> None:
     ):  # the slit tab is a real panel now
         assert f"$store.wilds.action('cal_{action}')" in cal
     assert "cal_slit" not in cal
-    assert "cal_lamps" not in cfg and "Archon VIS" not in cal
+    assert "cal_lamps" not in cfg
     # the placeholder buttons gave way to the generic settings form
     assert "cfg_" not in cfg
     assert 'x-data="settingsForm()"' in cfg and "wilds/js/config.js" in cfg
@@ -348,17 +381,19 @@ def test_eng_pages_have_their_own_content(client: Client) -> None:
 
 
 def test_unknown_eng_page_is_404(client: Client) -> None:
-    assert client.get("/eng/nothing/").status_code == 404
+    assert client.get("/io/engineering/nothing/").status_code == 404
 
 
-@pytest.mark.parametrize("url", ["/to/", "/io/", "/io/products/", "/eng/", "/eng/monitoring/"])
+@pytest.mark.parametrize(
+    "url", ["/to/", "/io/", "/io/products/", "/io/engineering/", "/io/engineering/monitoring/"]
+)
 def test_pages_carry_the_attention_band_and_load_jobs_js(client: Client, url: str) -> None:
     html = client.get(url).content.decode()
     assert 'x-data="attentionBand()"' in html
     assert "wilds/js/jobs.js" in html and "wilds/css/activity.css" in html
 
 
-@pytest.mark.parametrize("url", ["/to/", "/io/", "/io/products/", "/eng/monitoring/"])
+@pytest.mark.parametrize("url", ["/to/", "/io/", "/io/products/", "/io/engineering/monitoring/"])
 def test_the_activity_board_lists_the_components(client: Client, url: str) -> None:
     html = client.get(url).content.decode()
     assert 'x-data="activityBoard()"' in html
@@ -368,7 +403,7 @@ def test_the_activity_board_lists_the_components(client: Client, url: str) -> No
 
 
 def test_the_old_component_cards_are_gone(client: Client) -> None:
-    for url in ("/to/", "/io/", "/eng/monitoring/"):
+    for url in ("/to/", "/io/", "/io/engineering/monitoring/"):
         assert "ui-card" not in client.get(url).content.decode()
 
 
@@ -385,19 +420,19 @@ def test_the_test_job_card_is_on_the_io_operations_page_in_development(client: C
     assert "startDemo" not in client.get("/io/products/").content.decode()
 
 
-def test_request_control_is_hidden_once_control_is_granted_except_in_engineering(
+def test_request_control_is_hidden_once_control_is_granted(
     client: Client,
 ) -> None:
     html = client.get("/io/").content.decode()
-    wrapper = (
-        "x-show=\"$store.session.controlStatus !== 'granted' || $store.session.engineering\""
-    )
+    wrapper = "x-show=\"$store.session.controlStatus !== 'granted'\""
     assert wrapper in html
     # the button sits inside that wrapper, not beside it
     assert html.index(wrapper) < html.index('@click="$store.session.requestControl()"')
 
 
-@pytest.mark.parametrize("url", ["/io/", "/io/products/", "/eng/", "/eng/calibration/"])
+@pytest.mark.parametrize(
+    "url", ["/io/", "/io/products/", "/io/engineering/", "/io/engineering/calibration/"]
+)
 def test_operator_and_engineering_pages_have_the_camera_dock(client: Client, url: str) -> None:
     html = client.get(url).content.decode()
     assert 'class="camera-dock"' in html and "wilds/js/camera.js" in html
@@ -405,10 +440,14 @@ def test_operator_and_engineering_pages_have_the_camera_dock(client: Client, url
 
 
 def test_engineering_pages_use_the_app_tooltips_not_native_titles(client: Client) -> None:
-    for url in ("/eng/", "/eng/calibration/", "/eng/configuration/"):
+    for url in (
+        "/io/engineering/",
+        "/io/engineering/calibration/",
+        "/io/engineering/configuration/",
+    ):
         html = client.get(url).content.decode()
         assert 'title="Undo' not in html, url
-    cfg = client.get("/eng/configuration/").content.decode()
+    cfg = client.get("/io/engineering/configuration/").content.decode()
     assert "x-tooltip=\"'Undo this edit'\"" in cfg and 'x-tooltip="f.help"' in cfg
     assert 'x-tooltip="whyNotSave"' in cfg
 
@@ -431,23 +470,23 @@ def test_x_show_beats_bootstrap_display_utilities() -> None:
 
 
 def test_the_configuration_panel_chooses_components_with_tabs(client: Client) -> None:
-    cfg = client.get("/eng/configuration/").content.decode()
+    cfg = client.get("/io/engineering/configuration/").content.decode()
     assert 'class="nav nav-tabs' in cfg and 'role="tab"' in cfg
 
 
 def test_a_group_of_settings_is_a_pane_of_its_own(client: Client) -> None:
     """The camera keeps separate single-frame and video settings; the form shows each group in
     its own pane, and the dock's exposure and gain are the video ones."""
-    cfg = client.get("/eng/configuration/").content.decode()
+    cfg = client.get("/io/engineering/configuration/").content.decode()
     assert 'x-for="f in paneFields"' in cfg and 'x-for="p in panes"' in cfg
     text = Path(finders.find("wilds/js/config.js")).read_text()
     assert "get panes()" in text and "!f.nullable" in text
-    dock = client.get("/eng/configuration/").content.decode()
+    dock = client.get("/io/engineering/configuration/").content.decode()
     assert "s.settings.video.exposure_s" in dock
     assert "{ video: { exposure_s: Number(exposure) } }" in dock
 
 
-@pytest.mark.parametrize("url", ["/", "/to/", "/eng/monitoring/"])
+@pytest.mark.parametrize("url", ["/", "/to/", "/io/engineering/monitoring/"])
 def test_every_page_header_shows_wilds_opstate(client: Client, url: str) -> None:
     page = client.get(url, follow=True).content.decode()
     assert "$store.wilds.opView" in page and ">WILDS:</span>" in page
@@ -511,7 +550,7 @@ def test_the_viewer_has_a_fits_header_button_that_shows_text_only(client: Client
 
 
 def test_the_dock_has_a_splitter_that_keeps_its_width(client: Client) -> None:
-    dock = client.get("/eng/calibration/").content.decode()
+    dock = client.get("/io/engineering/calibration/").content.decode()
     assert 'class="dock-splitter"' in dock and 'role="separator"' in dock
     script = Path(finders.find("wilds/js/camera.js")).read_text()
     assert "wilds-camera-width" in script and "setPointerCapture" in script
@@ -520,12 +559,14 @@ def test_the_dock_has_a_splitter_that_keeps_its_width(client: Client) -> None:
 def test_every_page_shows_the_cover_pill_and_the_calibration_card_moves_the_cover(
     client: Client,
 ) -> None:
-    for url in ("/eng/calibration/", "/to/"):
+    for url in ("/io/engineering/calibration/", "/to/"):
         page = client.get(url).content.decode()
         assert "lightView" in page, url  # the header's Light pill says what the cover does
         assert "Light cover:" not in page, url  # and the old Light cover pill is gone from it
-    assert "coverView" in client.get("/eng/calibration/").content.decode()  # the Cover tab's pill
-    card = client.get("/eng/calibration/").content.decode()
+    assert (
+        "coverView" in client.get("/io/engineering/calibration/").content.decode()
+    )  # the Cover tab's pill
+    card = client.get("/io/engineering/calibration/").content.decode()
     assert "move('close')" in card and "move('open')" in card
     assert "Close the cover" in card and "Open the cover" in card
     status = Path(finders.find("wilds/js/status.js")).read_text()
@@ -533,7 +574,7 @@ def test_every_page_shows_the_cover_pill_and_the_calibration_card_moves_the_cove
 
 
 def test_the_engineering_calibration_page_has_a_cover_tab(client: Client) -> None:
-    page = client.get("/eng/calibration/").content.decode()
+    page = client.get("/io/engineering/calibration/").content.decode()
     assert "['cover', 'Cover']" in page and "tab === 'cover'" in page
     assert "wilds/js/cover.js" in page and 'x-data="coverControl"' in page
 
@@ -553,14 +594,14 @@ def test_the_to_page_has_no_light_dropdown_any_more(client: Client) -> None:
 
 
 def test_the_calibration_page_has_the_guide_camera_card(client: Client) -> None:
-    page = client.get("/eng/calibration/").content.decode()
+    page = client.get("/io/engineering/calibration/").content.decode()
     assert 'x-data="guideCalibration()"' in page and "wilds/js/guide_calibration.js" in page
     assert "Take " in page and "Calibration sessions" in page
-    assert "guideCalibration" not in client.get("/eng/monitoring/").content.decode()
+    assert "guideCalibration" not in client.get("/io/engineering/monitoring/").content.decode()
 
 
 def test_the_slit_tab_has_the_stage_and_the_optics_calibration(client: Client) -> None:
-    page = client.get("/eng/calibration/").content.decode()
+    page = client.get("/io/engineering/calibration/").content.decode()
     assert 'x-data="slitStage()"' in page and 'x-data="opticsCalibration()"' in page
     assert "wilds/js/optics_calibration.js" in page
     assert "Apply to the calibration" in page and "Measuring gap" in page
@@ -573,7 +614,7 @@ def test_the_slit_tab_has_the_stage_and_the_optics_calibration(client: Client) -
         "/slit/move",
     ):
         assert path in script
-    assert "opticsCalibration" not in client.get("/eng/monitoring/").content.decode()
+    assert "opticsCalibration" not in client.get("/io/engineering/monitoring/").content.decode()
 
 
 def test_the_overlay_follows_the_stages_width_and_the_measured_slit_angle() -> None:
@@ -582,7 +623,7 @@ def test_the_overlay_follows_the_stages_width_and_the_measured_slit_angle() -> N
 
 
 def test_the_dock_and_the_viewer_draw_the_detected_slit(client: Client) -> None:
-    dock = client.get("/eng/calibration/").content.decode()
+    dock = client.get("/io/engineering/calibration/").content.decode()
     assert (
         'aria-label="Detected slit"' in dock and "slit-detected" in dock and "detectedView" in dock
     )
@@ -597,23 +638,23 @@ def test_the_dock_and_the_viewer_draw_the_detected_slit(client: Client) -> None:
 
 
 def test_the_dock_can_open_the_latest_frame_in_the_viewer(client: Client) -> None:
-    dock = client.get("/eng/monitoring/").content.decode()
+    dock = client.get("/io/engineering/monitoring/").content.decode()
     assert "/viewer/?path=" in dock and "last_frame_id" in dock
 
 
 def test_the_activity_board_has_a_shutter_column(client: Client) -> None:
-    assert '"key": "shutter"' in client.get("/eng/monitoring/").content.decode()
+    assert '"key": "shutter"' in client.get("/io/engineering/monitoring/").content.decode()
 
 
 def test_the_viewer_may_be_framed_by_our_own_pages_only(client: Client) -> None:
     """The guide-camera dock shows it in a frame; Django's default X-Frame-Options: DENY would
     leave a broken-page icon there."""
     assert client.get("/viewer/").headers["X-Frame-Options"] == "SAMEORIGIN"
-    assert client.get("/eng/").headers["X-Frame-Options"] == "DENY"
+    assert client.get("/io/engineering/").headers["X-Frame-Options"] == "DENY"
 
 
 def test_the_dock_shows_stored_frames_in_place_of_the_video(client: Client) -> None:
-    dock = client.get("/eng/monitoring/").content.decode()
+    dock = client.get("/io/engineering/monitoring/").content.decode()
     assert "$store.camera.view" in dock and "Stored frame" in dock and "camera.live()" in dock
     script = Path(finders.find("wilds/js/camera.js")).read_text()
     assert "last_calibration_frame_id" in script and "guide-camera-dark" in script
@@ -621,7 +662,7 @@ def test_the_dock_shows_stored_frames_in_place_of_the_video(client: Client) -> N
 
 
 def test_the_calibration_page_has_a_tab_per_thing_to_calibrate(client: Client) -> None:
-    page = client.get("/eng/calibration/").content.decode()
+    page = client.get("/io/engineering/calibration/").content.decode()
     for label in ("Guide camera", "Lamps", "Slit", "ADC", "Focus", "Science cameras"):
         assert f"'{label}'" in page, label
     assert 'role="tab"' in page and "wilds-cal-tab" in page
@@ -634,13 +675,13 @@ def test_the_calibration_page_has_a_tab_per_thing_to_calibrate(client: Client) -
 
 def test_the_streaming_controls_are_not_shown_beside_a_stored_frame(client: Client) -> None:
     """Start, exposure, gain and the cooler belong to the video; a stored frame replaces them."""
-    dock = client.get("/eng/monitoring/").content.decode()
+    dock = client.get("/io/engineering/monitoring/").content.decode()
     controls = dock[dock.index('class="dock-controls"') : dock.index('class="dock-controls"') + 160]
     assert "!$store.camera.view" in controls
 
 
 def test_each_entry_has_a_discard_button_that_asks_first(client: Client) -> None:
-    page = client.get("/eng/calibration/").content.decode()
+    page = client.get("/io/engineering/calibration/").content.decode()
     assert '@click="discard(e)"' in page and "Discard these frames" in page
     script = Path(finders.find("wilds/js/guide_calibration.js")).read_text()
     assert "uiConfirm(" in script and '"DELETE"' in script
@@ -651,7 +692,7 @@ def test_each_entry_has_a_discard_button_that_asks_first(client: Client) -> None
 
 
 def test_every_header_indicator_is_the_same_pill(client: Client) -> None:
-    html = client.get("/eng/").content.decode()
+    html = client.get("/io/engineering/").content.decode()
     for label in ("Control", "TO", "TCS", "Mode", "WILDS", "Light"):
         assert f'<span class="pill-label">{label}:</span>' in html, label
     assert 'class="badge ui-pill' in html and 'pill-label">Server:' in html
@@ -740,7 +781,9 @@ def test_the_live_view_can_be_zoomed_and_panned(client: Client) -> None:
 def test_the_acquisition_tab_has_the_slit_control(client: Client) -> None:
     page = client.get("/io/operations/").content.decode()
     assert 'x-data="acquisitionSlit()"' in page and 'id="slit-slider"' in page
-    assert 'aria-label="Opening in microns"' in page and 'aria-label="Opening in arcseconds"' in page
+    assert (
+        'aria-label="Opening in microns"' in page and 'aria-label="Opening in arcseconds"' in page
+    )
     assert "apply()" in page
     script = Path(finders.find("wilds/js/acquisition.js")).read_text()
     assert "/slit/move" in script and "% open" in script
@@ -752,13 +795,13 @@ def test_explanations_are_an_info_icon_with_the_tooltip_on_it(client: Client) ->
     dock = client.get("/io/operations/").content.decode()
     # the guide-camera dock's labels: the icon is inside the label, the tooltip is on the icon
     assert 'class="bi bi-info-circle ui-info-icon"' in dock
-    assert "x-tooltip=\"'Exposure: 0.001 to 60 s'\"" in dock and "style=\"cursor: help;\"" not in dock
+    assert "x-tooltip=\"'Exposure: 0.001 to 60 s'\"" in dock and 'style="cursor: help;"' not in dock
 
 
 def test_the_cover_shows_where_its_state_comes_from_and_whether_the_light_reaches_wilds(
     client: Client,
 ) -> None:
-    card = client.get("/eng/calibration/").content.decode()
+    card = client.get("/io/engineering/calibration/").content.decode()
     assert "sensorText" in card and "lightPath" in card
     script = Path(finders.find("wilds/js/cover.js")).read_text()
     assert "c.sensed" in script and "to_wilds" in script
@@ -767,7 +810,7 @@ def test_the_cover_shows_where_its_state_comes_from_and_whether_the_light_reache
 
 
 def test_the_light_pill_says_whether_wilds_gets_light_from_the_cube(client: Client) -> None:
-    html = client.get("/eng/").content.decode()
+    html = client.get("/io/engineering/").content.decode()
     assert "$store.wilds.lightView" in html
     status = Path(finders.find("wilds/js/status.js")).read_text()
     view = status[status.index("get lightView()") : status.index("get tcsText()")]
@@ -779,7 +822,7 @@ def test_the_slit_overlay_draws_a_gap_that_grows_from_the_fixed_jaw(client: Clie
     script = Path(finders.find("wilds/js/slit.js")).read_text()
     assert "slit_side" in script and "WORKING_WIDTH_ARCSEC" in script  # one jaw moves
     assert "d.gap_x" in script  # the calibration's gap is drawn about its own middle
-    page = client.get("/eng/calibration/").content.decode()
+    page = client.get("/io/engineering/calibration/").content.decode()
     assert "only one jaw moves" in page.lower()
     optics = Path(finders.find("wilds/js/optics_calibration.js")).read_text()
     assert "Fixed jaw edge x" in optics and "Gap grows to" in optics
@@ -797,12 +840,12 @@ def test_the_to_page_has_the_same_dock_and_its_activity_panel_at_the_bottom(clie
 def test_the_dock_has_a_start_stop_button_for_whoever_holds_control(client: Client) -> None:
     dock = client.get("/io/operations/").content.decode()
     head = dock[dock.index('class="dock-head"') : dock.index('class="dock-viewbar')]
-    assert "$store.slit.canStream" in head and "canOperate" not in head  # a holder, engineering too
+    assert "$store.slit.canOperate" in head and "canStream" not in head  # one rule: a holder
     script = Path(finders.find("wilds/js/slit.js")).read_text()
-    body = script[script.index("get canStream()") :]
-    stream = body[: body.index("},")]
-    assert "holder" in stream and "engineering" not in stream  # not the TO, not a viewer
-    assert "$store.slit.canOperate" in dock  # the slit's handle is still the operator's only
+    assert "canStream" not in script
+    body = script[script.index("get canOperate()") :]
+    rule = body[: body.index("},")]
+    assert "holder" in rule and "engineering" not in rule  # not the TO, not a viewer
     assert "$store.camera.start()" in head and "$store.camera.stop()" in head
     assert "bi-stop-fill" in head and "bi-play-fill" in head
 
@@ -814,7 +857,9 @@ def test_the_fixed_jaw_is_marked_apart_from_the_rest_of_the_slit_rectangle(clien
     assert ".slit-fixed" in css and ".slit-now" in css
     now = css[css.index(".slit-now") :].split("}")[0]
     fixed = css[css.index(".slit-fixed") :].split("}")[0]
-    assert now.split("stroke:")[1].split(";")[0] != fixed.split("stroke:")[1].split(";")[0]  # another colour
+    assert (
+        now.split("stroke:")[1].split(";")[0] != fixed.split("stroke:")[1].split(";")[0]
+    )  # another colour
     script = Path(finders.find("wilds/js/slit.js")).read_text()
     assert "edge," in script  # the line is where the gap starts, turning with the rectangle
 
@@ -850,13 +895,19 @@ def test_the_to_wilds_panel_has_one_button_for_the_action_that_applies(client: C
     assert "this.isStartedUp ? this.shutdown() : this.startup()" in script
 
 
-def test_engineering_holding_control_may_command_the_telescope_from_the_adjust_panels(
-    client: Client,
-) -> None:
-    script = Path(finders.find("wilds/js/acquisition.js")).read_text()
-    # wilds-control lets the engineering lease command the telescope, so the panels must not refuse it
-    assert "Engineering mode does not command the telescope" not in script
-    assert "s.engineering" not in script
+def test_nothing_in_the_gui_knows_an_engineering_mode_any_more(client: Client) -> None:
+    for name in ("acquisition", "session", "status", "to", "slit", "cover", "optics_calibration"):
+        script = Path(finders.find(f"wilds/js/{name}.js")).read_text()
+        for gone in (
+            "s.engineering",
+            "this.engineering",
+            "c.engineering",
+            "enterEngineering",
+            "hb.engineering",
+            "view.engineering",
+        ):
+            assert gone not in script, (name, gone)
+        assert "Engineering mode does not command" not in script
 
 
 def test_a_pending_adjustment_survives_the_status_stream_after_a_job_has_finished(
@@ -868,6 +919,18 @@ def test_a_pending_adjustment_survives_the_status_stream_after_a_job_has_finishe
     # and angle again and again after the first job. The job handled is remembered instead.
     assert "function whenDone(component, then)" in script and "id !== handled" in script
     assert script.count("whenDone(this,") == 2  # the offsets and the rotation panels
-    assert '(state) => { if (state === "done")' not in script and "if (state === \"done\") {" not in script
+    assert (
+        '(state) => { if (state === "done")' not in script
+        and 'if (state === "done") {' not in script
+    )
     optics = Path(finders.find("wilds/js/optics_calibration.js")).read_text()
-    assert "v !== this.calVersion" in optics  # the calibration is read again only when its version moves
+    assert (
+        "v !== this.calVersion" in optics
+    )  # the calibration is read again only when its version moves
+
+
+def test_the_sidebar_submenu_listeners_come_before_it_is_opened(client: Client) -> None:
+    script = Path(finders.find("wilds/js/ui.js")).read_text()
+    side = script[script.index('.querySelectorAll(".sidebar-submenu")') :]
+    # opening the submenu of the page shown must turn its arrow: the listeners are attached first
+    assert side.index('addEventListener("show.bs.collapse"') < side.index(".show();")

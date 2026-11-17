@@ -18,7 +18,7 @@ document.addEventListener("alpine:init", () => {
         cover: null,                 // the instrument cover: {state: open|closed|opening|closing|unknown, since_ms, travel_s, sensed, cube: {to_wilds, ...}, ...}; null until known
         conf_versions: {},           // {"component/slice": version}: an open settings form compares it with what it loaded
         lastUpdate: null,
-        control: { holder: null, engineering: false, holder_code: null, holder_info: null },
+        control: { holder: null, holder_code: null, holder_info: null },
         time: null,                  // the server's clock: {utc_ms, zone}
         to: { online: null },        // Telescope Operator page open and unlocked (null = unknown)
         warnings: [],                // configuration problems worth showing, e.g. an ignored [passphrases] in config.toml
@@ -56,9 +56,7 @@ document.addEventListener("alpine:init", () => {
             const c = this.control;
             if (!c.holder) return { text: "nobody", cls: "ui-secondary", tip: "Nobody holds control" };
             const who = [c.holder, c.holder_code].filter(Boolean).join(" ");
-            return c.engineering
-                ? { text: `engineering · ${who}`, cls: "ui-warning", tip: c.holder_info || "" }
-                : { text: who, cls: "ui-info", tip: c.holder_info || "" };
+            return { text: who, cls: "ui-info", tip: c.holder_info || "" };
         },
         get toView() {
             const online = this.to.online;

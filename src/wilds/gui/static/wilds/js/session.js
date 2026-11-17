@@ -27,7 +27,6 @@ document.addEventListener("alpine:init", () => {
         code: null,
         provenance: "",
         holder: false,
-        engineering: false,
         requested: false,
         refused: false,          // the TO refused your last request; asking again clears it
         refusalReason: null,
@@ -54,7 +53,7 @@ document.addEventListener("alpine:init", () => {
                 status === "refused" ? "Refused" + (this.refusalReason ? `: ${this.refusalReason}` : "") : "",
             ].filter(Boolean).join("\n");
             return {
-                text: status + (status === "granted" && this.engineering ? " · engineering" : ""),
+                text: status,
                 cls: { granted: "ui-success", requested: "ui-info", refused: "ui-danger", none: "ui-secondary" }[status],
                 tip,
             };
@@ -64,7 +63,7 @@ document.addEventListener("alpine:init", () => {
         get local() {
             let request = { ok: true, why: "" };
             if (!this.ready) request = { ok: false, why: "Not connected to the server" };
-            else if (this.holder && !this.engineering) request = { ok: false, why: "You already hold control" };
+            else if (this.holder) request = { ok: false, why: "You already hold control" };
             else if (this.requested) request = { ok: false, why: "Waiting for the Telescope Operator" };
             const notYet = { ok: false, why: "Not implemented on the server yet" };
             return {
@@ -74,20 +73,6 @@ document.addEventListener("alpine:init", () => {
                 guiding_start: notYet, guiding_stop: notYet,
                 acquire_start: notYet, acquire_stop: notYet,
             };
-        },
-
-        /** Take control in engineering mode (plan §3.11): the passphrase is checked by wilds-control. */
-        async enterEngineering(passphrase) {
-            const response = await fetch(`${base}/control/engineering`, {
-                method: "POST",
-                headers: { "X-Session-Id": read(KEY_ID) || "", "Content-Type": "application/json" },
-                body: JSON.stringify({ passphrase }),
-            });
-            if (response.status === 403) throw new Error("Wrong engineering passphrase");
-            if (!response.ok) throw new Error(await problem(response));
-            this.holder = true;
-            this.engineering = true;
-            await tick();  // pick up the lease token
         },
 
         /** Ask for control; the TO grants it after you give them your name and short code. */
@@ -168,7 +153,6 @@ document.addEventListener("alpine:init", () => {
         store.name = hb.name;
         store.code = hb.code;
         store.holder = hb.holder;
-        store.engineering = hb.engineering;
         store.requested = hb.requested;
         store.refused = hb.refused;
         store.refusalReason = hb.refusal_reason;
