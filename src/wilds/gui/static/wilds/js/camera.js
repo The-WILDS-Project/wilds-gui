@@ -20,6 +20,7 @@ document.addEventListener("alpine:init", () => {
     const SIZES = ["thumb", "dock", "off"];
     const SIZE_KEY = "wilds-camera-size";
     const WIDTH_KEY = "wilds-camera-width";
+    const INDICATORS_KEY = "wilds-dock-indicators";
     const MIN_WIDTH = 320;
     const maxWidth = () => Math.max(MIN_WIDTH, Math.min(1000, Math.round(window.innerWidth * 0.7)));
     const NARROW = window.matchMedia("(max-width: 1199.98px)");  // too narrow for the full dock
@@ -38,6 +39,7 @@ document.addEventListener("alpine:init", () => {
         narrow: NARROW.matches,
         width: Number(read(WIDTH_KEY)) || 540,  // px, the full dock; set by the splitter
         dragging: false,
+        indicators: read(INDICATORS_KEY) !== "0",  // the column of indicators beside the dock's content
         zoom: 1,              // the live view's magnification (1 = the whole frame)
         cx: 0.5,              // the point of the frame in the middle of the dock, as fractions
         cy: 0.5,
@@ -202,6 +204,12 @@ document.addEventListener("alpine:init", () => {
                 this.view = null;
                 setTimeout(() => this.show(path, title, { size }), 0);
             }, 50);
+        },
+
+        toggleIndicators() {
+            this.indicators = !this.indicators;
+            write(INDICATORS_KEY, this.indicators ? "1" : "0");
+            this.refit();  // the viewer in the dock has a new width
         },
 
         setSize(size) {

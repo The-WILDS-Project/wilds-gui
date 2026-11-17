@@ -24,6 +24,8 @@ document.addEventListener("alpine:init", () => {
     };
     const num = (v, digits = 1) => (v === null || v === undefined || Number.isNaN(v) ? "—" : Number(v).toFixed(digits));
     const deg = (v, digits = 1) => (v === null || v === undefined ? "—" : `${num(v, digits)}°`);
+    /** An angle in [0, 360) that is 0 to within a twentieth of a degree (359.97 is 0 too). */
+    const nearZero = (v) => v !== null && v !== undefined && Math.min(v, 360 - v) < 0.05;
     const arc = (v, digits = 2) => (v === null || v === undefined ? "—" : `${num(v, digits)}″`);
 
     async function api(path, body) {
@@ -128,6 +130,22 @@ document.addEventListener("alpine:init", () => {
         get valid() { return this.editing && Number.isFinite(Number(this.pair1)) && Number.isFinite(Number(this.pair2)) && String(this.pair1).trim() !== "" && String(this.pair2).trim() !== ""; },
         get whyNotApply() {
             return this.whyNotMove || (this.valid ? "" : "Type both angles first");
+        },
+
+        /** Park: both pairs at their reference (0°). The pairs agree, so they make no dispersion. */
+        get atReference() {
+            const a = this.adc;
+            return !!a && !a.moving && nearZero(a.pair1_deg) && nearZero(a.pair2_deg);
+        },
+        get whyNotPark() {
+            return this.whyNotMove || (this.atReference ? "The pairs are already at their reference" : "");
+        },
+        async park() {
+            if (this.whyNotPark) return;
+            this.sending = true; this.error = null;
+            try { await api("/adc/move", { pair1_deg: 0, pair2_deg: 0 }); this.editing = false; }
+            catch (e) { this.error = String(e.message || e); }
+            this.sending = false;
         },
 
         async setTracking(on) {

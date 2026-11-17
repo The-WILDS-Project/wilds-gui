@@ -1,0 +1,76 @@
+{% comment %}
+The column of indicators on the right of the guide-camera dock (static/wilds/js/indicators.js): small
+pictures of mechanisms that are otherwise only numbers on a tab. Shown at the dock's full size, on
+every page with a dock; the dock's header button hides it (remembered per browser). On the Instrument
+Operator's pages an indicator jumps to its panel; on the TO's page they only show.
+{% endcomment %}
+<div class="dock-column" x-show="$store.camera.indicators && $store.camera.shown === 'dock'" aria-label="Indicators">
+
+    {# The ADC: two rings, one per prism pair, each turning with its stage. #}
+    <div class="dock-ind" x-data="adcIndicator()" :class="{ linked, absent: !installed }" :role="linked ? 'link' : 'img'"
+         :tabindex="linked ? 0 : -1" @click="open()" @keydown.enter="open()" x-tooltip="tip" :aria-label="'ADC: ' + caption">
+        <span class="ind-label">ADC</span>
+        <svg viewBox="0 0 100 100" aria-hidden="true">
+            <circle class="ind-scale" cx="50" cy="50" r="47.5"></circle>
+            {# The degree marks of the fixed scale, every 30° counter-clockwise from the top (the index is 0°); the 90s are longer. Written out, not made by x-for: a template does not make SVG. #}
+            <g class="ind-marks">
+                <line class="ind-mark" x1="27.75" y1="11.46" x2="26.25" y2="8.86"></line>
+                <line class="ind-mark" x1="11.46" y1="27.75" x2="8.86" y2="26.25"></line>
+                <line class="ind-mark ind-mark-major" x1="7.50" y1="50.00" x2="2.50" y2="50.00"></line>
+                <line class="ind-mark" x1="11.46" y1="72.25" x2="8.86" y2="73.75"></line>
+                <line class="ind-mark" x1="27.75" y1="88.54" x2="26.25" y2="91.14"></line>
+                <line class="ind-mark ind-mark-major" x1="50.00" y1="92.50" x2="50.00" y2="97.50"></line>
+                <line class="ind-mark" x1="72.25" y1="88.54" x2="73.75" y2="91.14"></line>
+                <line class="ind-mark" x1="88.54" y1="72.25" x2="91.14" y2="73.75"></line>
+                <line class="ind-mark ind-mark-major" x1="92.50" y1="50.00" x2="97.50" y2="50.00"></line>
+                <line class="ind-mark" x1="88.54" y1="27.75" x2="91.14" y2="26.25"></line>
+                <line class="ind-mark" x1="72.25" y1="11.46" x2="73.75" y2="8.86"></line>
+            </g>
+            <polygon class="ind-index" points="46.5,1 53.5,1 50,8"></polygon>  <!-- the fixed reference index -->
+            <g class="ind-rot" :style="ringStyle(a1)">
+                <circle class="ind-ring ind-ring-1" cx="50" cy="50" r="38.5"></circle>
+                <line class="ind-tick ind-tick-1" x1="50" y1="7" x2="50" y2="16"></line>
+            </g>
+            <g class="ind-rot" :style="ringStyle(a2)">
+                <circle class="ind-ring ind-ring-2" cx="50" cy="50" r="27.5"></circle>
+                <line class="ind-tick ind-tick-2" x1="50" y1="18" x2="50" y2="27"></line>
+            </g>
+            {# x-show, not x-if: a template clones HTML elements, and a <line> made so is not SVG and does not draw. #}
+            <line class="ind-goal ind-tick-1" x-show="goal(1)" :x1="goal(1)?.x1" :y1="goal(1)?.y1" :x2="goal(1)?.x2" :y2="goal(1)?.y2"></line>
+            <line class="ind-goal ind-tick-2" x-show="goal(2)" :x1="goal(2)?.x1" :y1="goal(2)?.y1" :x2="goal(2)?.x2" :y2="goal(2)?.y2"></line>
+            <line class="ind-parallactic" x-show="parallactic" :x1="parallactic?.x1" :y1="parallactic?.y1" :x2="parallactic?.x2" :y2="parallactic?.y2"></line>
+            <g class="ind-rot" :style="arrowStyle" x-show="showArrow">
+                <line class="ind-arrow" x1="50" y1="50" x2="50" :y2="50 - arrowLength + 4"></line>
+                <polygon class="ind-arrow" :points="arrowHead"></polygon>
+            </g>
+            <circle cx="50" cy="50" r="2" class="ind-index"></circle>
+        </svg>
+        <span class="ind-caption" x-text="caption"></span>
+    </div>
+
+    {# The slit: the gap between the fixed jaw (left) and the moving one. #}
+    <div class="dock-ind" x-data="slitIndicator()" :class="{ linked }" :role="linked ? 'link' : 'img'"
+         :tabindex="linked ? 0 : -1" @click="open()" @keydown.enter="open()" x-tooltip="tip" :aria-label="'Slit: ' + caption">
+        <span class="ind-label">Slit</span>
+        <svg viewBox="0 0 100 100" aria-hidden="true">
+            <rect class="ind-track" x="6" y="62" width="88" height="2"></rect>
+            <rect class="ind-jaw" x="6" y="34" width="24" height="24" rx="1.5"></rect>
+            <rect class="ind-jaw" :x="30 + gap" y="34" :width="94 - 30 - gap" height="24" rx="1.5" style="transition: x 1s linear, width 1s linear"></rect>
+            <rect class="ind-gap" x="30" y="34" :width="gap" height="24" style="transition: width 1s linear"></rect>
+            <line x1="30" y1="28" x2="30" y2="64" stroke="currentColor" stroke-width="1.6"></line>
+            <text x="18" y="76" text-anchor="middle" font-size="9" fill="currentColor" opacity="0.7">fixed</text>
+        </svg>
+        <span class="ind-caption" x-text="caption"></span>
+    </div>
+
+    {# The instrument cover: a cloth drawn over its window. #}
+    <div class="dock-ind" x-data="coverIndicator()" :class="{ linked }" :role="linked ? 'link' : 'img'"
+         :tabindex="linked ? 0 : -1" @click="open()" @keydown.enter="open()" x-tooltip="tip" :aria-label="'Cover: ' + caption">
+        <span class="ind-label">Cover</span>
+        <svg viewBox="0 0 100 100" aria-hidden="true">
+            <rect class="ind-frame" x="14" y="14" width="72" height="72" rx="3" :stroke-dasharray="state === 'unknown' ? '3 3' : ''"></rect>
+            <rect class="ind-cloth" x="16" y="16" width="68" :height="clothHeight" :style="clothStyle"></rect>
+        </svg>
+        <span class="ind-caption" x-text="caption"></span>
+    </div>
+</div>
