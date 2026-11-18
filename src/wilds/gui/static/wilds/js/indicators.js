@@ -131,8 +131,8 @@ document.addEventListener("alpine:init", () => {
         get widest() { return this.slit ? this.slit.max_um / this.slit.um_per_arcsec : 4; },
         get width() { return this.slit?.width_arcsec ?? this.last; },
         get moving() { return !!this.slit?.moving; },
-        /** The gap, from the fixed jaw's edge (x = 30) to the moving jaw's. */
-        get gap() { return 3 + 58 * Math.min(1, Math.max(0, (this.width ?? 0) / this.widest)); },
+        /** The gap, from the fixed jaw's edge (x = 40) to the moving jaw's. */
+        get gap() { return 3 + 27 * Math.min(1, Math.max(0, (this.width ?? 0) / this.widest)); },
         get caption() { return this.slit ? (this.width === null ? "—" : `${num(this.width, 2)}″`) + (this.moving ? " …" : "") : "…"; },
         get tip() {
             const s = this.slit;

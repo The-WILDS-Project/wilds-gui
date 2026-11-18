@@ -53,12 +53,12 @@ Operator's pages an indicator jumps to its panel; on the TO's page they only sho
          :tabindex="linked ? 0 : -1" @click="open()" @keydown.enter="open()" x-tooltip="tip" :aria-label="'Slit: ' + caption">
         <span class="ind-label">Slit</span>
         <svg viewBox="0 0 100 100" aria-hidden="true">
-            <rect class="ind-track" x="6" y="62" width="88" height="2"></rect>
-            <rect class="ind-jaw" x="6" y="34" width="24" height="24" rx="1.5"></rect>
-            <rect class="ind-jaw" :x="30 + gap" y="34" :width="94 - 30 - gap" height="24" rx="1.5" style="transition: x 1s linear, width 1s linear"></rect>
-            <rect class="ind-gap" x="30" y="34" :width="gap" height="24" style="transition: width 1s linear"></rect>
-            <line x1="30" y1="28" x2="30" y2="64" stroke="currentColor" stroke-width="1.6"></line>
-            <text x="18" y="76" text-anchor="middle" font-size="9" fill="currentColor" opacity="0.7">fixed</text>
+            {# Portrait, as the real slit is: 90 arcsec long and at most 4 wide. The gap opens sideways from the fixed jaw's edge (x = 40). #}
+            <rect class="ind-jaw" x="16" y="6" width="24" height="88" rx="1.5"></rect>
+            <rect class="ind-jaw" :x="40 + gap" y="6" :width="84 - 40 - gap" height="88" rx="1.5" style="transition: x 1s linear, width 1s linear"></rect>
+            <rect class="ind-gap" x="40" y="6" :width="gap" height="88" style="transition: width 1s linear"></rect>
+            <line x1="40" y1="2" x2="40" y2="98" stroke="currentColor" stroke-width="1.6"></line>
+            <text x="29" y="50" text-anchor="middle" font-size="8" fill="var(--bs-body-bg)" opacity="0.9" transform="rotate(-90 29 50)">fixed</text>
         </svg>
         <span class="ind-caption" x-text="caption"></span>
     </div>
