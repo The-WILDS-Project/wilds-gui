@@ -158,13 +158,15 @@ def test_the_engineering_pages_are_part_of_the_instrument_operators_gui(client: 
         ("/eng/calibration/", "/io/engineering/calibration/"),
         ("/io/calibration/", "/io/engineering/calibration/"),
         ("/io/configuration/", "/io/engineering/configuration/"),
+        ("/io/engineering/monitoring/", "/io/monitoring/"),  # Monitoring is in the main sidebar now
     ):
         response = client.get(old)
         assert response.status_code == 302 and response["Location"] == new, old
     html = client.get("/io/").content.decode()
     assert 'data-bs-target="#sub-engineering"' in html  # the Engineering group of the sidebar
-    for page in ("monitoring", "calibration", "configuration"):
+    for page in ("calibration", "configuration"):
         assert f'href="/io/engineering/{page}/"' in html
+    assert 'href="/io/monitoring/"' in html and 'href="/io/engineering/monitoring/"' not in html
 
 
 def test_there_is_no_engineering_mode_or_passphrase_box(client: Client) -> None:
@@ -327,11 +329,17 @@ def test_io_sidebar_has_only_operations_and_products(client: Client) -> None:
         assert f'href="{gone}"' not in html
 
 
-def test_eng_sidebar_has_monitoring_calibration_and_configuration(client: Client) -> None:
-    html = client.get("/io/engineering/").content.decode()
-    for page in ("monitoring", "calibration", "configuration"):
+def test_monitoring_is_in_the_main_sidebar_and_engineering_has_calibration_and_configuration(
+    client: Client,
+) -> None:
+    html = client.get("/io/engineering/").content.decode()  # opens on Calibration
+    for page in ("calibration", "configuration"):
         assert f'href="/io/engineering/{page}/"' in html
-    assert 'sidebar-subitem active" title="Monitoring"' in html
+    assert 'sidebar-subitem active" title="Calibration"' in html
+    assert 'title="Monitoring"' in html and 'sidebar-subitem" title="Monitoring"' not in html
+    monitoring = client.get("/io/monitoring/").content.decode()
+    assert 'sidebar-item active" title="Monitoring"' in monitoring
+    assert "<h4 class=\"mb-0\">Monitoring</h4>" in monitoring
     assert (
         'sidebar-subitem active" title="Calibration"'
         in client.get("/io/engineering/calibration/").content.decode()
@@ -359,7 +367,7 @@ def test_calibration_and_configuration_moved_from_io_to_eng(
 
 
 def test_eng_pages_have_their_own_content(client: Client) -> None:
-    mon = client.get("/io/engineering/").content.decode()
+    mon = client.get("/io/monitoring/").content.decode()
     cal = client.get("/io/engineering/calibration/").content.decode()
     cfg = client.get("/io/engineering/configuration/").content.decode()
     assert "Archon VIS" in mon and "cal_lamps" not in mon and "cfg_slit" not in mon
@@ -384,7 +392,7 @@ def test_unknown_eng_page_is_404(client: Client) -> None:
 
 
 @pytest.mark.parametrize(
-    "url", ["/to/", "/io/", "/io/products/", "/io/engineering/", "/io/engineering/monitoring/"]
+    "url", ["/to/", "/io/", "/io/products/", "/io/engineering/", "/io/monitoring/"]
 )
 def test_pages_carry_the_attention_band_and_load_jobs_js(client: Client, url: str) -> None:
     html = client.get(url).content.decode()
@@ -392,7 +400,7 @@ def test_pages_carry_the_attention_band_and_load_jobs_js(client: Client, url: st
     assert "wilds/js/jobs.js" in html and "wilds/css/activity.css" in html
 
 
-@pytest.mark.parametrize("url", ["/to/", "/io/", "/io/products/", "/io/engineering/monitoring/"])
+@pytest.mark.parametrize("url", ["/to/", "/io/", "/io/products/", "/io/monitoring/"])
 def test_the_activity_board_lists_the_components(client: Client, url: str) -> None:
     html = client.get(url).content.decode()
     assert 'x-data="activityBoard()"' in html
@@ -402,7 +410,7 @@ def test_the_activity_board_lists_the_components(client: Client, url: str) -> No
 
 
 def test_the_old_component_cards_are_gone(client: Client) -> None:
-    for url in ("/to/", "/io/", "/io/engineering/monitoring/"):
+    for url in ("/to/", "/io/", "/io/monitoring/"):
         assert "ui-card" not in client.get(url).content.decode()
 
 
@@ -485,7 +493,7 @@ def test_a_group_of_settings_is_a_pane_of_its_own(client: Client) -> None:
     assert "{ video: { exposure_s: Number(exposure) } }" in dock
 
 
-@pytest.mark.parametrize("url", ["/", "/to/", "/io/engineering/monitoring/"])
+@pytest.mark.parametrize("url", ["/", "/to/", "/io/monitoring/"])
 def test_every_page_header_shows_wilds_opstate(client: Client, url: str) -> None:
     page = client.get(url, follow=True).content.decode()
     assert "$store.wilds.opView" in page and ">WILDS:</span>" in page
@@ -596,7 +604,7 @@ def test_the_calibration_page_has_the_guide_camera_card(client: Client) -> None:
     page = client.get("/io/engineering/calibration/").content.decode()
     assert 'x-data="guideCalibration()"' in page and "wilds/js/guide_calibration.js" in page
     assert "Take " in page and "Calibration sessions" in page
-    assert "guideCalibration" not in client.get("/io/engineering/monitoring/").content.decode()
+    assert "guideCalibration" not in client.get("/io/monitoring/").content.decode()
 
 
 def test_the_slit_tab_has_the_stage_and_the_optics_calibration(client: Client) -> None:
@@ -613,7 +621,7 @@ def test_the_slit_tab_has_the_stage_and_the_optics_calibration(client: Client) -
         "/slit/move",
     ):
         assert path in script
-    assert "opticsCalibration" not in client.get("/io/engineering/monitoring/").content.decode()
+    assert "opticsCalibration" not in client.get("/io/monitoring/").content.decode()
 
 
 def test_the_overlay_follows_the_stages_width_and_the_measured_slit_angle() -> None:
@@ -637,12 +645,12 @@ def test_the_dock_and_the_viewer_draw_the_detected_slit(client: Client) -> None:
 
 
 def test_the_dock_can_open_the_latest_frame_in_the_viewer(client: Client) -> None:
-    dock = client.get("/io/engineering/monitoring/").content.decode()
+    dock = client.get("/io/monitoring/").content.decode()
     assert "/viewer/?path=" in dock and "last_frame_id" in dock
 
 
 def test_the_activity_board_has_a_shutter_column(client: Client) -> None:
-    assert '"key": "shutter"' in client.get("/io/engineering/monitoring/").content.decode()
+    assert '"key": "shutter"' in client.get("/io/monitoring/").content.decode()
 
 
 def test_the_viewer_may_be_framed_by_our_own_pages_only(client: Client) -> None:
@@ -653,7 +661,7 @@ def test_the_viewer_may_be_framed_by_our_own_pages_only(client: Client) -> None:
 
 
 def test_the_dock_shows_stored_frames_in_place_of_the_video(client: Client) -> None:
-    dock = client.get("/io/engineering/monitoring/").content.decode()
+    dock = client.get("/io/monitoring/").content.decode()
     assert "$store.camera.view" in dock and "Stored frame" in dock and "camera.live()" in dock
     script = Path(finders.find("wilds/js/camera.js")).read_text()
     assert "last_calibration_frame_id" in script and "guide-camera-dark" in script
@@ -674,7 +682,7 @@ def test_the_calibration_page_has_a_tab_per_thing_to_calibrate(client: Client) -
 
 def test_the_streaming_controls_are_not_shown_beside_a_stored_frame(client: Client) -> None:
     """Start, exposure, gain and the cooler belong to the video; a stored frame replaces them."""
-    dock = client.get("/io/engineering/monitoring/").content.decode()
+    dock = client.get("/io/monitoring/").content.decode()
     controls = dock[dock.index('class="dock-controls"') : dock.index('class="dock-controls"') + 160]
     assert "!$store.camera.view" in controls
 
@@ -947,8 +955,8 @@ def test_the_operations_page_has_an_adc_tab_with_the_angles_and_the_tracking_swi
     assert "adcMonitor" not in html  # the stage details are not the operator's tab
 
 
-def test_the_stage_details_of_the_adc_are_on_engineering_monitoring(client: Client) -> None:
-    html = client.get("/io/engineering/monitoring/").content.decode()
+def test_the_stage_details_of_the_adc_are_on_monitoring(client: Client) -> None:
+    html = client.get("/io/monitoring/").content.decode()
     assert 'x-data="adcMonitor()"' in html and "wilds/js/adc.js" in html
     assert "adcPanel" not in html
     script = Path(finders.find("wilds/js/adc.js")).read_text()

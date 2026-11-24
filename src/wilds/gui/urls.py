@@ -34,7 +34,9 @@ urlpatterns = [
     # Calibration and configuration were /io pages once, then /eng ones; they are under /io/engineering.
     path("io/calibration/", RedirectView.as_view(url="/io/engineering/calibration/", permanent=False)),
     path("io/configuration/", RedirectView.as_view(url="/io/engineering/configuration/", permanent=False)),
-    path("io/engineering/", views.io_engineering_page, {"page": "monitoring"}, name="io_engineering"),
+    # Monitoring was in the Engineering group once; it is in the main sidebar now.
+    path("io/engineering/monitoring/", RedirectView.as_view(url="/io/monitoring/", permanent=False)),
+    path("io/engineering/", views.io_engineering_page, {"page": "calibration"}, name="io_engineering"),
     path("io/engineering/<slug:page>/", views.io_engineering_page, name="io_engineering_page"),
     path("io/", views.io_page, {"page": "operations"}, name="io"),
     path("io/<slug:page>/", views.io_page, name="io_page"),

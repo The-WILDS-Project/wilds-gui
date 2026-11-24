@@ -5,14 +5,14 @@
 {% block control %}{% include "components/control_status.html" %}{% endblock %}
 {% block sidebar %}{% include "components/sidebar.html" %}{% endblock %}
 {% block dock %}{% include "components/camera_dock.html" %}{% endblock %}
-{% block extra_js %}{% if engineering %}{% if page == "calibration" %}<script src="{% static 'wilds/js/guide_calibration.js' %}?v={{ asset_version }}" defer></script>
+{% block extra_js %}{% if technical %}{% if page == "calibration" %}<script src="{% static 'wilds/js/guide_calibration.js' %}?v={{ asset_version }}" defer></script>
 <script src="{% static 'wilds/js/optics_calibration.js' %}?v={{ asset_version }}" defer></script>
 <script src="{% static 'wilds/js/cover.js' %}?v={{ asset_version }}" defer></script>
 <script src="{% static 'wilds/js/adc.js' %}?v={{ asset_version }}" defer></script>{% elif page == "configuration" %}<script src="{% static 'wilds/js/config.js' %}?v={{ asset_version }}" defer></script>{% elif page == "monitoring" %}<script src="{% static 'wilds/js/adc.js' %}?v={{ asset_version }}" defer></script>{% endif %}{% elif page == "operations" %}<script src="{% static 'wilds/js/acquisition.js' %}?v={{ asset_version }}" defer></script>
 <script src="{% static 'wilds/js/adc.js' %}?v={{ asset_version }}" defer></script>{% endif %}{% endblock %}
 {% block bottom %}
-{% comment %} The Activity board is on every page but Engineering → Monitoring, which is that board in full. {% endcomment %}
-{% if not engineering or page != "monitoring" %}
+{% comment %} The Activity board is on every page but Monitoring, which is that board in full. {% endcomment %}
+{% if page != "monitoring" %}
 <div class="ui-bottom">
     <div class="card">
         <div class="card-header"><i class="bi bi-activity me-2"></i>Activity</div>
@@ -43,13 +43,13 @@
     </div>
 </div>
 
-{% if engineering %}
-{% comment %} The Engineering group: there is no engineering mode, so whoever holds control may calibrate and
+{% if technical %}
+{% comment %} Monitoring and the Engineering group: there is no engineering mode, so whoever holds control may calibrate and
    configure, and each panel says why it is greyed out when you do not. {% endcomment %}
 <div class="alert alert-warning py-2" role="alert" x-data x-show="$store.wilds.warnings.length > 0">
     <i class="bi bi-exclamation-triangle me-2"></i><span x-text="$store.wilds.warnings.join('; ')"></span>
 </div>
-{% if page == "monitoring" %}{% include "io/engineering/monitoring.html" %}
+{% if page == "monitoring" %}{% include "io/monitoring.html" %}
 {% elif page == "calibration" %}{% include "io/engineering/calibration.html" %}
 {% elif page == "configuration" %}{% include "io/engineering/configuration.html" %}{% endif %}
 
@@ -387,5 +387,5 @@
 </div>
 {% endif %}
 
-{% if page != "operations" and not engineering %}<p class="text-body-secondary">The {{ page_label|lower }} panels come here.</p>{% endif %}
+{% if page != "operations" and not technical %}<p class="text-body-secondary">The {{ page_label|lower }} panels come here.</p>{% endif %}
 {% endblock %}
