@@ -7,7 +7,7 @@
  *  - "adcPanel": the Instrument Operator's ADC tab (Operations): where the two pairs are, what they
  *    make against what the atmosphere needs, the tracking switch (POST /adc/tracking) and setting
  *    the pairs by hand (POST /adc/move), which tracking refuses.
- *  - "adcMonitor": the technical detail for Engineering → Monitoring: the stages' own readings, the
+ *  - "adcMonitor": the technical detail for Monitoring: the stages' own readings, the
  *    zero points, what tracking last worked out and with which weather, and the settings.
  *  - "adcCalibration": Engineering → Calibration → ADC: each pair's reference to its stage position
  *    (the zero point: what the stage reads when its pair is at the reference), saved in the ADC's
@@ -255,7 +255,7 @@ document.addEventListener("alpine:init", () => {
         },
     }));
 
-    // -- the technical detail, for Engineering → Monitoring ---------------------------------
+    // -- the technical detail, for Monitoring ---------------------------------
     Alpine.data("adcMonitor", () => withCommon({
         get rows() {
             const a = this.adc;

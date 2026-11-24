@@ -7,13 +7,13 @@ from django.views.decorators.clickjacking import xframe_options_sameorigin
 IO_PAGES = [
     ("operations", "Operations", "bi-binoculars"),
     ("products", "Products", "bi-images"),
+    ("monitoring", "Monitoring", "bi-activity"),
 ]
 
 # The Engineering group of the same sidebar (/io/engineering/<slug>/). There is no engineering
 # mode: whoever holds control may calibrate and configure, so these are pages of the Instrument
 # Operator's GUI like the others.
 ENGINEERING_PAGES = [
-    ("monitoring", "Monitoring", "bi-activity"),
     ("calibration", "Calibration", "bi-lightbulb"),
     ("configuration", "Configuration", "bi-sliders"),
 ]
@@ -49,19 +49,20 @@ def to_page(request: HttpRequest) -> HttpResponse:
 
 
 def io_page(request: HttpRequest, page: str) -> HttpResponse:
-    """The Instrument Operator's GUI, one sidebar entry per page."""
+    """The Instrument Operator's GUI, one sidebar entry per page (Monitoring is the board of
+    technical readings, so it is laid out like the Engineering pages)."""
     labels = {slug: label for slug, label, _ in IO_PAGES}
     if page not in labels:
         raise Http404(page)
     return render(
         request,
         "io/page.html",
-        {"nav": sidebar(page), "page": page, "page_label": labels[page]},
+        {"nav": sidebar(page), "page": page, "page_label": labels[page], "technical": page == "monitoring"},
     )
 
 
-def io_engineering_page(request: HttpRequest, page: str = "monitoring") -> HttpResponse:
-    """Monitoring, calibration and configuration: the Engineering group of the same GUI."""
+def io_engineering_page(request: HttpRequest, page: str = "calibration") -> HttpResponse:
+    """Calibration and configuration: the Engineering group of the same GUI."""
     labels = {slug: label for slug, label, _ in ENGINEERING_PAGES}
     if page not in labels:
         raise Http404(page)
@@ -72,6 +73,6 @@ def io_engineering_page(request: HttpRequest, page: str = "monitoring") -> HttpR
             "nav": sidebar(page, "engineering"),
             "page": page,
             "page_label": f"Engineering: {labels[page]}",
-            "engineering": True,
+            "technical": True,
         },
     )
