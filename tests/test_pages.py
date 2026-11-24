@@ -400,13 +400,19 @@ def test_pages_carry_the_attention_band_and_load_jobs_js(client: Client, url: st
     assert "wilds/js/jobs.js" in html and "wilds/css/activity.css" in html
 
 
-@pytest.mark.parametrize("url", ["/to/", "/io/", "/io/products/", "/io/monitoring/"])
+@pytest.mark.parametrize("url", ["/to/", "/io/products/", "/io/monitoring/"])
 def test_the_activity_board_lists_the_components(client: Client, url: str) -> None:
     html = client.get(url).content.decode()
     assert 'x-data="activityBoard()"' in html
     assert html.count('id="board-components"') == 1
     for key in ("guide-camera", "slit", "adc", "lamps", "archon-vis", "archon-uv"):
         assert key in html
+
+
+def test_operations_has_no_activity_panel_because_monitoring_is_that_board(client: Client) -> None:
+    ops = client.get("/io/").content.decode()
+    assert 'x-data="activityBoard()"' not in ops and 'class="ui-bottom"' not in ops
+    assert 'x-data="activityBoard()"' in client.get("/io/monitoring/").content.decode()
 
 
 def test_the_old_component_cards_are_gone(client: Client) -> None:
@@ -1015,7 +1021,7 @@ def test_the_adc_is_optional_and_everything_that_relies_on_it_observes_the_insta
     assert 'x-show="!installed"' in panel and "Engineering → Configuration → adc" in panel
     assert ':disabled="!editing || !installed"' in panel  # Reset too
     assert "$store.wilds.adc?.installed === false" in panel  # the tab itself is dimmed
-    board = client.get("/io/").content.decode()
+    board = client.get("/io/monitoring/").content.decode()
     assert "absent(c.key)" in board  # the activity board's ADC card
     jobs = Path(finders.find("wilds/js/jobs.js")).read_text()
     assert "present === false" in jobs
