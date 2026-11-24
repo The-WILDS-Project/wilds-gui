@@ -11,8 +11,9 @@
 <script src="{% static 'wilds/js/adc.js' %}?v={{ asset_version }}" defer></script>{% elif page == "configuration" %}<script src="{% static 'wilds/js/config.js' %}?v={{ asset_version }}" defer></script>{% elif page == "monitoring" %}<script src="{% static 'wilds/js/adc.js' %}?v={{ asset_version }}" defer></script>{% endif %}{% elif page == "operations" %}<script src="{% static 'wilds/js/acquisition.js' %}?v={{ asset_version }}" defer></script>
 <script src="{% static 'wilds/js/adc.js' %}?v={{ asset_version }}" defer></script>{% endif %}{% endblock %}
 {% block bottom %}
-{% comment %} The Activity board is on every page but Monitoring, which is that board in full. {% endcomment %}
-{% if page != "monitoring" %}
+{% comment %} The Activity board is on the pages that have room for it, but not on Operations (its panels fill the
+   page) nor Monitoring, which is that board in full. {% endcomment %}
+{% if page != "monitoring" and page != "operations" %}
 <div class="ui-bottom">
     <div class="card">
         <div class="card-header"><i class="bi bi-activity me-2"></i>Activity</div>
