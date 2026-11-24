@@ -733,10 +733,10 @@ def test_the_acquisition_tab_adjusts_offsets_and_rotation_with_the_slit_overlay(
 ) -> None:
     page = client.get("/io/operations/").content.decode()
     for part in (
+        'x-data="acquisitionAdjust()"',
         'x-data="acquisitionOffsets()"',
         'x-data="acquisitionRotation()"',
-        "Adjust offsets",
-        "Adjust rotation",
+        'x-data="acquisitionSlit()"',
         "Start acquisition",
     ):
         assert part in page, part
@@ -777,13 +777,24 @@ def test_the_live_view_can_be_zoomed_and_panned(client: Client) -> None:
     assert "setZoom(" in script and "get zoomStyle()" in script
 
 
+def test_the_three_adjustments_share_one_panel_and_one_apply(client: Client) -> None:
+    page = client.get("/io/operations/").content.decode()
+    assert page.count('@click="applyAll()"') == 1  # the one Apply
+    assert page.count("<em>Apply</em> below") == 3  # offsets, rotation and slit wait for it
+    assert page.index('x-data="acquisitionAdjust()"') < page.index('x-data="acquisitionOffsets()"')
+    assert page.index('x-data="acquisitionSlit()"') < page.index('@click="applyAll()"')
+    for gone in ("Adjust offsets", "Adjust rotation", '@click="send()"'):
+        assert gone not in page, gone
+    script = Path(finders.find("wilds/js/acquisition.js")).read_text()
+    assert 'Alpine.data("acquisitionAdjust"' in script and "async applyAll()" in script
+
+
 def test_the_acquisition_tab_has_the_slit_control(client: Client) -> None:
     page = client.get("/io/operations/").content.decode()
     assert 'x-data="acquisitionSlit()"' in page and 'id="slit-slider"' in page
     assert (
         'aria-label="Opening in microns"' in page and 'aria-label="Opening in arcseconds"' in page
     )
-    assert "apply()" in page
     script = Path(finders.find("wilds/js/acquisition.js")).read_text()
     assert "/slit/move" in script and "% open" in script
 
