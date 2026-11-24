@@ -14,6 +14,11 @@ document.addEventListener("alpine:init", () => {
     const session = () => Alpine.store("session");
     const wilds = () => Alpine.store("wilds");
 
+    // The three adjusting parts (offsets, rotation, slit) register here, so that the one Apply
+    // (acquisitionAdjust) can see what each holds and send it.
+    Alpine.store("adjust", { offsets: null, rotation: null, slit: null });
+    const parts = () => Alpine.store("adjust");
+
     const sessionId = () => {
         try { return localStorage.getItem("wilds.sessionId") || ""; } catch { return ""; }
     };
@@ -243,6 +248,8 @@ document.addEventListener("alpine:init", () => {
         sending: false,
         error: null,
 
+        init() { parts().slit = this; },
+
         get slit() { return wilds().slit; },
         get known() { return this.slit?.position_um !== null && this.slit?.position_um !== undefined; },
         get perArcsec() { return this.slit?.um_per_arcsec || 124.69; },
@@ -317,6 +324,7 @@ document.addEventListener("alpine:init", () => {
         error: null,
 
         init() {
+            parts().rotation = this;
             // A finished rotation: the pending angle has become the real one.
             whenDone(this, () => { slit().pendingPa = null; });
         },
@@ -349,6 +357,7 @@ document.addEventListener("alpine:init", () => {
         error: null,
 
         init() {
+            parts().offsets = this;
             // A point picked on the live view: move the pointing by the offset from the slit to it.
             slit().pickHandler = (e, n) => { this.moveBy(e, n); };
             whenDone(this, () => { this.pending = null; slit().pickMark = null; });
@@ -382,6 +391,102 @@ document.addEventListener("alpine:init", () => {
             if (this.whyNot) return;
             const ok = await uiConfirm("Bake the offset into the target's coordinates and clear it?", { title: "Absorb the offset", ok: "Absorb" });
             if (ok) await this.submit("/telescope/offset/absorb", {});
+        },
+    }));
+    // -- the one Apply for the three adjusting parts ------------------------------------------
+    Alpine.data("acquisitionAdjust", () => ({
+        sending: false,
+        error: null,
+        outcome: null,           // { cls, text } after an Apply
+
+        get offsets() { return parts().offsets; },
+        get rotation() { return parts().rotation; },
+        get slit() { return parts().slit; },
+        get offsetsChanged() { return !!this.offsets?.pending; },
+        get rotationChanged() { return this.rotation?.pending !== null && this.rotation?.pending !== undefined; },
+        get slitChanged() { return !!this.slit?.changed; },
+        get anyPending() { return this.offsetsChanged || this.rotationChanged || this.slitChanged; },
+        get changesText() {
+            const what = [];
+            if (this.offsetsChanged) what.push(`offsets ${this.offsets.text(this.offsets.pending)}`);
+            if (this.rotationChanged) what.push(`slit PA ${this.rotation.pending.toFixed(1)}°`);
+            if (this.slitChanged) what.push(`slit opening ${this.slit.arcsec.toFixed(2)}″`);
+            return what.length ? what.join(" · ") : "nothing";
+        },
+
+        // the telescope commands run one at a time: the job in progress, if any
+        get job() { return this.rotation?.job || this.offsets?.job || null; },
+        get percent() { return Math.round(100 * (this.job?.progress?.fraction ?? 0)); },
+        cancel() { return Alpine.store("jobs").cancel(this.job.id); },
+
+        get whyNot() {
+            if (this.sending) return "Applying…";
+            if (!this.anyPending) return "Nothing to apply: nudge the pointing, set a PA, or move the slit";
+            if (this.slitChanged && this.slit.whyNot) return this.slit.whyNot;
+            if (this.rotationChanged && this.rotation.whyNot) return this.rotation.whyNot;
+            if (this.offsetsChanged && this.offsets.whyNotApply) return this.offsets.whyNotApply;
+            return "";
+        },
+        resetAll() {
+            this.offsets?.reset(); this.rotation?.reset(); this.slit?.reset();
+            this.error = null; this.outcome = null;
+        },
+
+        /** Wait until ``why()`` says nothing (the telescope is on target again, say); give up with its reason. */
+        async ready(why) {
+            const deadline = Date.now() + 60000;
+            while (why()) {
+                if (Date.now() > deadline) throw new Error(why());
+                await new Promise((r) => setTimeout(r, 200));
+            }
+        },
+
+        /** Start a telescope command with ``send`` and wait for its job to finish; it fails the whole Apply if the job does. */
+        async runJob(part, send) {
+            const before = part.jobId;
+            await send();
+            if (part.error) throw new Error(part.error);
+            if (part.jobId === before) throw new Error(part.whyNot || "The command was not sent");
+            const deadline = Date.now() + 120000;
+            while (!part.last) {
+                if (Date.now() > deadline) throw new Error("The telescope did not answer in time");
+                await new Promise((r) => setTimeout(r, 200));
+            }
+            const j = part.last;
+            if (j.state === "cancelled") throw new Error("Cancelled");
+            if (j.state !== "done") throw new Error(j.error?.message || "The telescope command failed");
+        },
+
+        /**
+         * Send what was changed, one after another: the slit (it moves at once), then the rotation,
+         * then the offsets. The telescope takes one command at a time, so each waits for the one before
+         * it, and the first to fail stops the rest (what was not sent stays set up).
+         */
+        async applyAll() {
+            if (this.whyNot) return;
+            this.sending = true; this.error = null; this.outcome = null;
+            const done = [];
+            try {
+                if (this.slitChanged) {
+                    await this.slit.apply();
+                    if (this.slit.error) throw new Error(this.slit.error);
+                    done.push("slit");
+                }
+                if (this.rotationChanged) {
+                    await this.ready(() => this.rotation.whyNot);
+                    await this.runJob(this.rotation, () => this.rotation.send());
+                    done.push("rotation");
+                }
+                if (this.offsetsChanged) {
+                    await this.ready(() => this.offsets.whyNotApply);  // on target again after the rotation
+                    await this.runJob(this.offsets, () => this.offsets.apply());
+                    done.push("offsets");
+                }
+                this.outcome = { cls: "ui-success", text: `Applied: ${done.join(", ")}` };
+            } catch (e) {
+                this.error = (done.length ? `Applied ${done.join(", ")}; then: ` : "") + String(e.message || e);
+            }
+            this.sending = false;
         },
     }));
 });

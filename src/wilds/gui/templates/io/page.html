@@ -158,12 +158,18 @@
             </div>
         </div>
 
-        <div class="card mb-3" x-data="acquisitionOffsets()">
-            <div class="card-header"><i class="bi bi-arrows-move me-2"></i>Adjust offsets</div>
+        <div class="card mb-3" x-data="acquisitionAdjust()">
+            <div class="card-header"><i class="bi bi-sliders me-2"></i>Adjust</div>
             <div class="card-body">
+                <p class="small text-body-secondary">
+                    Offsets, rotation and slit opening: set any of them, and one <em>Apply</em> sends what you changed.
+                </p>
+
+                <div x-data="acquisitionOffsets()">
+                    <h6><i class="bi bi-arrows-move me-2"></i>Offsets</h6>
                 <p class="small text-body-secondary mb-2">
                     Moves the telescope's pointing (the Handset offset), by arrows or by picking a point on the live
-                    view to put on the slit. Nothing is sent until <em>Apply</em>.
+                    view to put on the slit. Nothing is sent until <em>Apply</em> below.
                 </p>
                 <div class="row mb-2 align-items-center">
                     <div class="col-3 fw-bold text-end">Now</div>
@@ -199,38 +205,21 @@
                 <div class="row mb-2 align-items-center">
                     <div class="col-3"></div>
                     <div class="col-9 d-flex flex-wrap gap-2">
-                        <span :class="whyNotApply ? 'ui-unavailable' : ''" x-tooltip="whyNotApply">
-                            <button type="button" class="btn btn-primary" :disabled="!!whyNotApply || sending" @click="apply()">Apply</button></span>
-                        <button type="button" class="btn btn-outline-secondary" :disabled="!pending && !$store.slit.pickMark" @click="reset()">Reset</button>
                         <span :class="whyNot ? 'ui-unavailable' : ''" x-tooltip="whyNot">
-                            <button type="button" class="btn btn-outline-secondary" :disabled="!!whyNot || sending" @click="clear()">Clear offset</button></span>
+                            <button type="button" class="btn btn-sm btn-outline-secondary" :disabled="!!whyNot || sending" @click="clear()">Clear offset</button></span>
                         <span :class="whyNot ? 'ui-unavailable' : ''"
                               x-tooltip="whyNot || 'Make the offset part of the target\'s coordinates and clear the offset: the telescope stays where it is, and Clear no longer takes you back to the original coordinates'">
-                            <button type="button" class="btn btn-outline-secondary" :disabled="!!whyNot || sending" @click="absorb()">Absorb</button></span>
+                            <button type="button" class="btn btn-sm btn-outline-secondary" :disabled="!!whyNot || sending" @click="absorb()">Absorb</button></span>
                     </div>
                 </div>
-                <div class="row mb-2" x-show="job">
-                    <div class="col-3"></div>
-                    <div class="col-9 d-flex align-items-center gap-2">
-                        <div class="progress flex-grow-1" style="max-width: 18rem; height: 1.2rem;">
-                            <div class="progress-bar" role="progressbar" :style="'width: ' + percent + '%'"></div></div>
-                        <span class="small" x-text="job?.progress?.message"></span>
-                        <button type="button" class="btn btn-sm btn-outline-secondary" x-show="$store.jobs.showCancel" :disabled="!$store.jobs.canControl" @click="cancel()">Cancel</button>
-                    </div>
                 </div>
-                <div class="row" x-show="outcome"><div class="col-3"></div>
-                    <div class="col-9"><span class="badge" :class="outcome?.cls" x-text="outcome?.text"></span></div></div>
-                <div class="alert alert-danger py-2 mt-2 mb-0" role="alert" x-show="error">
-                    <i class="bi bi-exclamation-octagon me-2"></i><span x-text="error"></span></div>
-            </div>
-        </div>
 
-        <div class="card mb-3" x-data="acquisitionRotation()">
-            <div class="card-header"><i class="bi bi-arrow-repeat me-2"></i>Adjust rotation</div>
-            <div class="card-body">
+                <hr>
+                <div x-data="acquisitionRotation()">
+                    <h6><i class="bi bi-arrow-repeat me-2"></i>Rotation</h6>
                 <p class="small text-body-secondary mb-2">
                     Turns the slit (the rotator) to a sky position angle, East of North. Drag the handle at the end of the
-                    slit on the live view, or type an angle; nothing is sent until <em>Send</em>. It needs a target.
+                    slit on the live view, or type an angle; nothing is sent until <em>Apply</em> below. It needs a target.
                 </p>
                 <div class="row mb-2 align-items-center">
                     <div class="col-3 fw-bold text-end">Slit PA now</div>
@@ -244,34 +233,14 @@
                             <span class="input-group-text">°</span>
                         </div>
                     </div>
-                    <div class="col-6 d-flex gap-2">
-                        <span :class="whyNot ? 'ui-unavailable' : ''" x-tooltip="whyNot">
-                            <button type="button" class="btn btn-primary" :disabled="!!whyNot || sending" @click="send()">
-                                <i class="bi bi-send me-1"></i>Send</button></span>
-                        <button type="button" class="btn btn-outline-secondary" :disabled="pending === null" @click="reset()">Reset</button>
-                    </div>
                 </div>
-                <div class="row mb-2" x-show="job">
-                    <div class="col-3"></div>
-                    <div class="col-9 d-flex align-items-center gap-2">
-                        <div class="progress flex-grow-1" style="max-width: 18rem; height: 1.2rem;">
-                            <div class="progress-bar" role="progressbar" :style="'width: ' + percent + '%'"></div></div>
-                        <span class="small" x-text="job?.progress?.message"></span>
-                        <button type="button" class="btn btn-sm btn-outline-secondary" x-show="$store.jobs.showCancel" :disabled="!$store.jobs.canControl" @click="cancel()">Cancel</button>
-                    </div>
                 </div>
-                <div class="row" x-show="outcome"><div class="col-3"></div>
-                    <div class="col-9"><span class="badge" :class="outcome?.cls" x-text="outcome?.text"></span></div></div>
-                <div class="alert alert-danger py-2 mt-2 mb-0" role="alert" x-show="error">
-                    <i class="bi bi-exclamation-octagon me-2"></i><span x-text="error"></span></div>
-            </div>
-        </div>
 
-        <div class="card mb-3" x-data="acquisitionSlit()">
-            <div class="card-header"><i class="bi bi-distribute-horizontal me-2"></i>Slit</div>
-            <div class="card-body">
+                <hr>
+                <div x-data="acquisitionSlit()">
+                    <h6><i class="bi bi-distribute-horizontal me-2"></i>Slit</h6>
                 <p class="small text-body-secondary mb-2">
-                    The slit stage's opening. Set the slider (or type microns or arcsec); nothing moves until <em>Apply</em>.
+                    The slit stage's opening. Set the slider (or type microns or arcsec); nothing moves until <em>Apply</em> below.
                 </p>
                 <div class="row mb-2 align-items-center">
                     <div class="col-3 fw-bold text-end">Opening now</div>
@@ -304,12 +273,35 @@
                                    @input="setArcsec($event.target.value)" @blur="done()" aria-label="Opening in arcseconds">
                             <span class="input-group-text">arcsec</span>
                         </div>
-                        <span :class="whyNot ? 'ui-unavailable' : ''" x-tooltip="whyNot">
-                            <button type="button" class="btn btn-primary" :disabled="!!whyNot || sending" @click="apply()">
-                                <i class="bi bi-check-lg me-1"></i>Apply</button></span>
-                        <button type="button" class="btn btn-outline-secondary" :disabled="!changed" @click="reset()">Reset</button>
                     </div>
                 </div>
+                </div>
+
+                <hr>
+                <div class="row mb-2 align-items-center">
+                    <div class="col-3 fw-bold text-end">Will change</div>
+                    <div class="col-9"><span x-text="changesText"></span></div>
+                </div>
+                <div class="row mb-2 align-items-center">
+                    <div class="col-3"></div>
+                    <div class="col-9 d-flex flex-wrap gap-2">
+                        <span :class="whyNot ? 'ui-unavailable' : ''" x-tooltip="whyNot">
+                            <button type="button" class="btn btn-primary" :disabled="!!whyNot || sending" @click="applyAll()">
+                                <i class="bi bi-check-lg me-1"></i>Apply</button></span>
+                        <button type="button" class="btn btn-outline-secondary" :disabled="!anyPending || sending" @click="resetAll()">Reset</button>
+                    </div>
+                </div>
+                <div class="row mb-2" x-show="job">
+                    <div class="col-3"></div>
+                    <div class="col-9 d-flex align-items-center gap-2">
+                        <div class="progress flex-grow-1" style="max-width: 18rem; height: 1.2rem;">
+                            <div class="progress-bar" role="progressbar" :style="'width: ' + percent + '%'"></div></div>
+                        <span class="small" x-text="job?.progress?.message"></span>
+                        <button type="button" class="btn btn-sm btn-outline-secondary" x-show="$store.jobs.showCancel" :disabled="!$store.jobs.canControl" @click="cancel()">Cancel</button>
+                    </div>
+                </div>
+                <div class="row" x-show="outcome"><div class="col-3"></div>
+                    <div class="col-9"><span class="badge" :class="outcome?.cls" x-text="outcome?.text"></span></div></div>
                 <div class="alert alert-danger py-2 mt-2 mb-0" role="alert" x-show="error">
                     <i class="bi bi-exclamation-octagon me-2"></i><span x-text="error"></span></div>
             </div>
